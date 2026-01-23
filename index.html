@@ -1694,11 +1694,19 @@
         #gameOverOverlay .overlay-content {
             cursor: default;
         }
+               /* v1.1: keep game-over modal truly centered; hint shouldn't affect flex centering */
         .tap-hint {
+            position: fixed;
+            left: 50%;
+            transform: translateX(-50%);
+            bottom: max(12px, env(safe-area-inset-bottom));
             font-size: 11px;
             color: rgba(255,255,255,0.6);
-            margin-top: 12px;
+            text-align: center;
+            pointer-events: none;
+            margin-top: 0; /* no longer in normal flow */
         }
+
 
         /* Game-over polish - Part F: Disable screen shake in reduce-motion */
         body.reduce-motion .game-container.shake {
@@ -1707,7 +1715,8 @@
         /* Mobile-only adjustment: lift Tater to avoid thumb occlusion */
 @media (max-width: 520px) {
   .tater-container {
-    bottom: 16%;
+    left: 6%;
+    bottom: 18%;
   }
 }
 
@@ -1726,7 +1735,7 @@
 
         <div class="tater-container" id="taterContainer">
             <!-- Visual pass - Tater the Corgi with storybook outline filter -->
-            <svg class="tater running" id="tater" viewBox="0 0 130 95" xmlns="http://www.w3.org/2000/svg">
+            <svg class="tater" id="tater" viewBox="0 0 130 95" xmlns="http://www.w3.org/2000/svg">
                 <defs>
                     <!-- Visual pass - subtle outline filter for storybook look -->
                     <filter id="taterOutline" x="-5%" y="-5%" width="110%" height="110%">
@@ -3398,7 +3407,7 @@
         // CHANGE (visual): high-speed substep motion smoothing to reduce strobing
         // When spd > 10, split movement into substeps for smoother collision and visual continuity
         const SUBSTEP_THRESHOLD = 10;  // px/frame threshold to enable substeps
-        const MAX_SUBSTEPS = 4;        // cap to avoid performance issues
+        const MAX_SUBSTEPS = 1; // v1.1 perf: disable substeps (avoid layout thrash);        // cap to avoid performance issues
 
         function updateObstacles() {
             const spd = 5 * gameSpeed;
