@@ -2215,13 +2215,10 @@
         }
         let preRunState = true; // Game starts in pre-run state, waiting for first input
 
-        // Onboarding - show pre-run hint (Mode A: minimal hint during pre-run only)
+        // Onboarding - pre-run hint disabled (v1.1)
         function showPreRunHint() {
-            if (preRunState && !tutorialActive) {
-                hintBar.textContent = 'Tap and hold to start';
-                hintBar.classList.remove('hidden', 'toast', 'toast-out');
-            }
-        }
+            return; // intentionally disabled
+}
 
         // Onboarding - hide hint bar (used when entering gameplay or overlays)
         function hideHintBar() {
