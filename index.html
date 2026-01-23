@@ -3549,6 +3549,7 @@
         function startJump() {
             // Step 4 tutorial - don't start jump while tutorial is active
             if (isPaused || isGameOver || tutorialActive) return;
+            startPrompt.classList.remove('show');
             // Visual hierarchy & pacing - Part B: First input starts the run
             if (preRunState) {
                 preRunState = false;
