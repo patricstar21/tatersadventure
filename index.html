@@ -38,6 +38,12 @@
             -webkit-tap-highlight-color: transparent;
         }
 
+        /* CHANGE (ambient): CSS variable for background motion speed factor */
+        /* ambientMotionFactor = 1.0 is normal; < 1.0 is slower (e.g., 0.55 for calm pre-run) */
+        :root {
+            --ambient-motion-factor: 1;
+        }
+
         html, body {
             height: 100%;
             width: 100%;
@@ -76,7 +82,7 @@
             left: 0;
             width: 200%;
             height: 140px;
-            animation: scroll-clouds 60s linear infinite;
+            animation: scroll-clouds calc(60s / var(--ambient-motion-factor)) linear infinite;
         }
         .clouds.paused { animation-play-state: paused; }
         @keyframes scroll-clouds {
@@ -95,7 +101,7 @@
             left: 0;
             width: 200%;
             height: 180px;
-            animation: scroll-far 80s linear infinite;
+            animation: scroll-far calc(80s / var(--ambient-motion-factor)) linear infinite;
         }
         .landmarks-far.paused { animation-play-state: paused; }
         @keyframes scroll-far {
@@ -109,7 +115,7 @@
             left: 0;
             width: 200%;
             height: 160px;
-            animation: scroll-mid 50s linear infinite;
+            animation: scroll-mid calc(50s / var(--ambient-motion-factor)) linear infinite;
         }
         .landmarks-mid.paused { animation-play-state: paused; }
         @keyframes scroll-mid {
@@ -123,7 +129,7 @@
             left: 0;
             width: 200%;
             height: 130px;
-            animation: scroll-park 30s linear infinite;
+            animation: scroll-park calc(30s / var(--ambient-motion-factor)) linear infinite;
         }
         .park-elements.paused { animation-play-state: paused; }
         @keyframes scroll-park {
@@ -149,7 +155,7 @@
             background: linear-gradient(180deg, #D4C8B8 0%, #C4B8A8 30%, #B4A898 70%, #A49888 100%);
             border-top: 3px solid #8A7A6A;
             border-bottom: 3px solid #7A6A5A;
-            animation: scroll-path 8s linear infinite;
+            animation: scroll-path calc(8s / var(--ambient-motion-factor)) linear infinite;
         }
         .path.paused { animation-play-state: paused; }
         @keyframes scroll-path {
@@ -455,13 +461,13 @@
             filter: drop-shadow(1px 2px 2px rgba(0,0,0,0.35)) drop-shadow(0 0 1px rgba(0,0,0,0.2));
         }
 
-        /* Flying objects polish - spawn-in animation */
+        /* Flying objects polish - spawn-in animation (softened entry to reduce peripheral eye strain) */
         .sprite.spawning {
-            animation: sprite-spawn 150ms ease-out forwards;
+            animation: sprite-spawn 180ms ease-out forwards;
         }
         @keyframes sprite-spawn {
-            0% { opacity: 0; transform: scale(0.7); }
-            100% { opacity: 1; transform: scale(1); }
+            0% { opacity: 0; transform: translate3d(18px, 0, 0) scale(0.98); }
+            100% { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
         }
 
         /* Flying objects polish - entry telegraph (brief attention-getting bob) */
@@ -863,8 +869,6 @@
         /* v1.1.x: fully remove hint when hidden */
         .hint.hidden {
             display: none;
-}
-
         }
         /* Onboarding - Toast mode for temporary tips */
         .hint.toast {
@@ -1283,6 +1287,43 @@
             animation: none !important;
             transform: none !important;
             filter: none !important;
+        }
+
+        /* CHANGE (high-speed-visual): Dampen noisy idle animations at high speed to reduce eye strain */
+        /* Only active when score >= 1000 AND reduce-motion is NOT enabled */
+        body.high-speed .sprite.thunder-idle {
+            animation-duration: 0.3s; /* 2x slower (was 0.15s) */
+        }
+        body.high-speed .sprite.vacuum-idle {
+            animation-duration: 0.2s; /* 2.5x slower (was 0.08s) */
+        }
+        body.high-speed .sprite.skateboard-idle {
+            animation-duration: 0.6s; /* 2x slower (was 0.3s) */
+        }
+        /* Dampened keyframes with reduced amplitude for high-speed mode */
+        @keyframes thunder-jitter-damped {
+            0%, 100% { transform: translateX(0); }
+            50% { transform: translateX(1.5px); } /* 25% reduced (was 2px) */
+        }
+        @keyframes vacuum-shake-damped {
+            0%, 100% { transform: translateX(0); }
+            50% { transform: translateX(0.6px); } /* 40% reduced (was 1px) */
+        }
+        @keyframes skateboard-roll-damped {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(1.5px); } /* 25% reduced (was 2px) */
+        }
+        body.high-speed .sprite.thunder-idle {
+            animation-name: thunder-jitter-damped;
+            animation-duration: 0.3s;
+        }
+        body.high-speed .sprite.vacuum-idle {
+            animation-name: vacuum-shake-damped;
+            animation-duration: 0.2s;
+        }
+        body.high-speed .sprite.skateboard-idle {
+            animation-name: skateboard-roll-damped;
+            animation-duration: 0.6s;
         }
 
         /* Accessibility - High Contrast mode */
@@ -2107,11 +2148,29 @@
         const journeyEncouragement = document.getElementById('journeyEncouragement');
 
         // Share polish - About modal functions
+        // CHANGE (cleanup): overlay pause — consistent pause/resume for About and Settings
+        let wasPausedBeforeOverlay = false;
+
         function showAbout() {
+            // Save current pause state before opening overlay
+            wasPausedBeforeOverlay = isPaused;
+            // Pause game safely while overlay is open
+            if (!isGameOver && !preRunState) {
+                isPaused = true;
+                pauseAnimations(true);
+                body.classList.remove('playing');
+            }
+            startPrompt.classList.remove('show');
             aboutOverlay.classList.add('show');
         }
         function hideAbout() {
             aboutOverlay.classList.remove('show');
+            // Resume only if game was not paused before and is in playable state
+            if (!wasPausedBeforeOverlay && !isGameOver && !tutorialActive && !preRunState) {
+                isPaused = false;
+                pauseAnimations(false);
+                body.classList.add('playing');
+            }
         }
 
         // Accessibility - Settings modal functions
@@ -2120,10 +2179,25 @@
         const highContrastToggle = document.getElementById('highContrastToggle');
 
         function showSettings() {
+            // Save current pause state before opening overlay
+            wasPausedBeforeOverlay = isPaused;
+            // Pause game safely while overlay is open
+            if (!isGameOver && !preRunState) {
+                isPaused = true;
+                pauseAnimations(true);
+                body.classList.remove('playing');
+            }
+            startPrompt.classList.remove('show');
             settingsOverlay.classList.add('show');
         }
         function hideSettings() {
             settingsOverlay.classList.remove('show');
+            // Resume only if game was not paused before and is in playable state
+            if (!wasPausedBeforeOverlay && !isGameOver && !tutorialActive && !preRunState) {
+                isPaused = false;
+                pauseAnimations(false);
+                body.classList.add('playing');
+            }
         }
 
         // Accessibility - Load settings from localStorage
@@ -2215,10 +2289,94 @@
         }
         let preRunState = true; // Game starts in pre-run state, waiting for first input
 
-        // Onboarding - pre-run hint disabled (v1.1)
+        // CHANGE (ambient): ambientMotionFactor controls background motion speed
+        // 1.0 = normal speed, < 1.0 = slower (e.g., 0.55 for calm pre-run)
+        let ambientMotionFactor = 1;
+        function setAmbientMotionFactor(factor) {
+            ambientMotionFactor = factor;
+            document.documentElement.style.setProperty('--ambient-motion-factor', factor);
+        }
+
+        // CHANGE (ambient-ramp): Gentle ramp from 0.55 to 1.0 over time or until first milestone
+        const AMBIENT_RAMP_START = 0.55;
+        const AMBIENT_RAMP_END = 1.0;
+        const AMBIENT_RAMP_DURATION = 15000; // 15 seconds (within 12-18s range)
+        const AMBIENT_RAMP_MILESTONE = 200;  // First journey milestone threshold
+        let ambientRampActive = false;
+        let ambientRampStartTime = 0;
+        let ambientRampPausedElapsed = 0; // Elapsed time saved when paused
+
+        function easeOutCubic(t) {
+            return 1 - Math.pow(1 - t, 3);
+        }
+
+        function startAmbientRamp() {
+            setAmbientMotionFactor(AMBIENT_RAMP_START);
+            ambientRampActive = true;
+            ambientRampStartTime = performance.now();
+            ambientRampPausedElapsed = 0;
+        }
+
+        function updateAmbientRamp(currentScore) {
+            if (!ambientRampActive) return;
+            // End ramp early if player crosses first milestone
+            if (currentScore >= AMBIENT_RAMP_MILESTONE) {
+                completeAmbientRamp();
+                return;
+            }
+            // Calculate progress based on elapsed time
+            const elapsed = performance.now() - ambientRampStartTime;
+            const progress = Math.min(elapsed / AMBIENT_RAMP_DURATION, 1);
+            const easedProgress = easeOutCubic(progress);
+            const newFactor = AMBIENT_RAMP_START + (AMBIENT_RAMP_END - AMBIENT_RAMP_START) * easedProgress;
+            setAmbientMotionFactor(newFactor);
+            // Complete ramp when time is up
+            if (progress >= 1) {
+                completeAmbientRamp();
+            }
+        }
+
+        function completeAmbientRamp() {
+            ambientRampActive = false;
+            setAmbientMotionFactor(AMBIENT_RAMP_END);
+        }
+
+        function resetAmbientRamp() {
+            ambientRampActive = false;
+            ambientRampPausedElapsed = 0;
+            setAmbientMotionFactor(AMBIENT_RAMP_END); // Reset to normal speed for pre-run
+        }
+
+        function pauseAmbientRamp() {
+            if (ambientRampActive) {
+                ambientRampPausedElapsed = performance.now() - ambientRampStartTime;
+            }
+        }
+
+        function resumeAmbientRamp() {
+            if (ambientRampActive) {
+                ambientRampStartTime = performance.now() - ambientRampPausedElapsed;
+            }
+        }
+
+        // CHANGE (high-speed-visual): Toggle body.high-speed class to dampen noisy idle animations
+        // This is VISUAL ONLY - does not affect gameplay, collision, or scoring
+        const HIGH_SPEED_THRESHOLD = 1000;
+        function updateHighSpeedVisual(currentScore) {
+            const reduceMotion = body.classList.contains('reduce-motion');
+            const highSpeedVisual = currentScore >= HIGH_SPEED_THRESHOLD && !reduceMotion;
+            body.classList.toggle('high-speed', highSpeedVisual);
+        }
+
+        function resetHighSpeedVisual() {
+            body.classList.remove('high-speed');
+        }
+
+        // CHANGE (cleanup): Hint bar is now purely a toast surface
+        // No pre-run hints; only showToast() can display messages
         function showPreRunHint() {
-            return; // intentionally disabled
-}
+            // No-op: pre-run hints removed; hint bar is toast-only
+        }
 
         // Onboarding - hide hint bar (used when entering gameplay or overlays)
         function hideHintBar() {
@@ -2230,17 +2388,8 @@
             }
         }
 
-        // Onboarding - initialize hint bar state
-        // Tutorial takes precedence: no hint during tutorial
-        // Pre-run without tutorial: show minimal "Tap and hold to start"
-        // In-run: hint stays hidden, toasts appear contextually
-        if (tutorialActive) {
-            hintBar.classList.add('hidden');
-        } else if (preRunState) {
-            showPreRunHint();
-        } else {
-            hintBar.classList.add('hidden');
-        }
+        // Hint bar starts hidden; only showToast() can make it visible
+        hintBar.classList.add('hidden');
 
         // Step 3 sound - WebAudio system
         let audioCtx = null;
@@ -2380,14 +2529,14 @@
 
         // Journey framing v2 - London journey milestones (reduced to 6 for emotional weight)
         // Wider gaps between stages make each milestone feel earned
-        // CHANGE (copy): Final stage renamed to feel like "almost home" not just arrival
+        // CHANGE (copy): Final stage is "Home" — soft destination, game stays endless
         const JOURNEY_STAGES = [
             { name: 'Lost in Hyde Park', threshold: 0, mood: 'Keeping close.' },
             { name: 'Paddington', threshold: 200, mood: 'Finding the way.' },
             { name: 'Soho', threshold: 450, mood: 'A familiar path.' },
             { name: "St Paul's", threshold: 800, mood: 'Not far now.' },
             { name: 'Tower Bridge', threshold: 1300, mood: 'Nearly safe.' },
-            { name: 'Home', threshold: 2000, mood: 'He knows this place' }
+            { name: 'Home', threshold: 1900, mood: 'He made it.' }
         ];
 
         // CHANGE (copy): Encouragements emphasize progress, not loss
@@ -3276,7 +3425,8 @@
             // Flying objects polish - wrap SVG in sprite div for animations (preserves hitbox)
             const sprite = document.createElement('div');
             const idleClass = idleAnimations[t.id] || 'default-idle';
-            sprite.className = 'sprite spawning';
+            // CHANGE (spawn-ease): Don't apply .spawning immediately; apply on viewport entry at high speed
+            sprite.className = 'sprite';
             sprite.innerHTML = t.svg;
             o.appendChild(sprite);
 
@@ -3284,17 +3434,30 @@
             o.style.cssText = `width:${t.width}px;height:${t.height}px;right:0;bottom:${t.groundY}%;will-change:transform`;
             obstaclesContainer.appendChild(o);
 
-            // Flying objects polish - animation sequence: spawn -> telegraph -> idle
+            // CHANGE (spawn-ease): Determine eligibility for viewport-entry easing (high speed only)
+            const reduceMotion = body.classList.contains('reduce-motion');
+            const spawnEaseEligible = score >= 1000 && !reduceMotion;
+
+            // Flying objects polish - animation sequence: telegraph -> idle
+            // Delay telegraph when spawn-ease is active to let the entry animation complete first
             setTimeout(() => {
-                sprite.classList.remove('spawning');
                 sprite.classList.add('telegraph');
                 setTimeout(() => {
                     sprite.classList.remove('telegraph');
                     sprite.classList.add(idleClass);
                 }, 200);
-            }, 150);
+            }, spawnEaseEligible ? 400 : 180);
 
-            obstacles.push({ element: o, x: window.innerWidth + 80, type: t, hit: false });
+            obstacles.push({
+                element: o,
+                x: window.innerWidth + 80,
+                type: t,
+                hit: false,
+                _sprite: sprite,
+                _spawnEaseEligible: spawnEaseEligible,
+                _spawnEaseDone: false,
+                _idleClass: idleClass
+            });
 
             // Step 2.6 spawn gate accuracy - invalidate cache after spawning
             invalidateCandidateCache();
@@ -3449,6 +3612,12 @@
                 }
                 // Final position update (GPU-accelerated)
                 o.element.style.transform = `translate3d(${o.x - window.innerWidth}px, 0, 0)`;
+                // CHANGE (spawn-ease): Apply soft entry animation when obstacle enters viewport at high speed
+                if (o._spawnEaseEligible && !o._spawnEaseDone && o.x <= window.innerWidth) {
+                    o._spawnEaseDone = true;
+                    o._sprite.classList.add('spawning');
+                    setTimeout(() => o._sprite.classList.remove('spawning'), 220);
+                }
                 if (!o.scored && o.x < tr.left - 40) {
                     o.scored = true;
                     score += Math.floor(10 * gameSpeed);
@@ -3560,6 +3729,7 @@
                 body.classList.add('playing'); // Visual hierarchy & pacing - Part A
                 tater.classList.add('running');
                 pauseAnimations(false);
+                startAmbientRamp(); // CHANGE (ambient-ramp): Begin gentle ramp from 0.55 to 1.0
             }
             isHolding = true;
             jumpPower = 0;
@@ -3653,16 +3823,16 @@
 
         // Journey framing v2 - Reflective, gentle game-over messages
         // Focus on progress toward home, not failure or conquest
-        // CHANGE (story): home clarity — special message when player reached final stage
+        // CHANGE (story): home clarity — special message when player reached Home (1900+)
         function getGameOverMessage(finalScore) {
-            // Final stage threshold (Almost Home) - acknowledge they made it
+            // Final stage threshold (Home) - acknowledge they made it
             if (finalScore >= 1900) return "He made it home today.";
             if (finalScore < 50) return "A short walk, but a start.";
             if (finalScore < 200) return "He found his bearings.";
             if (finalScore < 450) return "A little further this time.";
             if (finalScore < 800) return "He's learning the way.";
             if (finalScore < 1300) return "So close to familiar streets.";
-            return "Almost home. Almost.";
+            return "Home is just ahead.";  // Tower Bridge range (1300-1899)
         }
 
         // Game-over polish - Part D: Best score management
@@ -3726,36 +3896,54 @@
         // Visual hierarchy & pacing - Part A: toggle playing class when pausing
         function togglePause() { if (isGameOver || preRunState) return; isPaused = !isPaused; pauseOverlay.classList.toggle('show', isPaused); pauseAnimations(isPaused); body.classList.toggle('playing', !isPaused); const pauseBtn = document.getElementById('pauseBtn'); const icon = isPaused ? '▶' : '⏸'; const label = isPaused ? 'Resume' : 'Pause'; pauseBtn.innerHTML = `<span class="btn-icon">${icon}</span><span class="btn-label">${label}</span>`; }
         // Visual hierarchy & pacing - Part B: also check preRunState before adding running class
-        function pauseAnimations(p) { document.querySelectorAll('.clouds,.landmarks-far,.landmarks-mid,.park-elements,.path').forEach(e => e.classList.toggle('paused', p)); if (p) tater.classList.remove('running'); else if (!isJumping && !isGameOver && !preRunState) tater.classList.add('running'); }
+        function pauseAnimations(p) { document.querySelectorAll('.clouds,.landmarks-far,.landmarks-mid,.park-elements,.path').forEach(e => e.classList.toggle('paused', p)); if (p) { tater.classList.remove('running'); pauseAmbientRamp(); } else { if (!isJumping && !isGameOver && !preRunState) tater.classList.add('running'); resumeAmbientRamp(); } }
 
         // Step 4 tutorial - show tutorial on first run
+        // CHANGE (cleanup): Priority 2A — remove body.playing while tutorial is open
         function showTutorial() {
             if (tutorialActive) {
+                body.classList.remove('playing');
                 tutorialOverlay.classList.add('show');
                 pauseAnimations(true);
             }
         }
 
         // Step 4 tutorial - dismiss tutorial and start game
+        // CHANGE (cleanup): Priority 2A — only restore body.playing if game is actually running
+        // CHANGE (cleanup): Respect prior pause state when dismissing Help (not first-run tutorial)
         function dismissTutorial() {
+            const wasFirstRunTutorial = tutorialActive; // True only on first-run, false for Help reopen
             tutorialActive = false;
-            isPaused = false; // UI polish - ensure game unpauses (for Help reopen case)
             localStorage.setItem('taterTutorialSeen', 'true');
             tutorialOverlay.classList.remove('show');
-            // Onboarding - show pre-run hint if still in pre-run, otherwise hide
+
+            // Determine if we should unpause
+            const shouldUnpause = wasFirstRunTutorial || !helpWasPausedBefore;
+
             if (preRunState) {
-                showPreRunHint();
+                // Hint bar stays hidden (toast-only); just show start prompt
                 startPrompt.classList.add('show');
-            } else {
+                isPaused = false;
+                pauseAnimations(false);
+            } else if (shouldUnpause) {
                 hideHintBar();
+                isPaused = false;
+                pauseAnimations(false);
+                if (!isGameOver) {
+                    body.classList.add('playing');
+                }
             }
-            pauseAnimations(false);
+            // If game was paused before Help, keep it paused (isPaused stays true, animations stay paused)
         }
 
         // UI polish - show help (tutorial) without re-enabling hint
+        // CHANGE (cleanup): Priority 2A — remove body.playing while help overlay is open
+        let helpWasPausedBefore = false; // Track if game was paused before Help opened
         function showHelp() {
             settingsOverlay.classList.remove('show'); // Close settings first
+            helpWasPausedBefore = isPaused; // Save pause state before opening
             isPaused = true; // Pause game logic while help is showing
+            body.classList.remove('playing'); // Priority 2A: no dimmed UI while overlay open
             startPrompt.classList.remove('show'); // Visual hierarchy & pacing - hide prompt during help
             tutorialOverlay.classList.add('show');
             pauseAnimations(true);
@@ -3767,8 +3955,8 @@
             preRunState = true;
             body.classList.remove('playing');
             startPrompt.classList.add('show');
-            // Onboarding - show pre-run hint on reset (Mode A)
-            showPreRunHint();
+            // Hint bar stays hidden (toast-only surface)
+            hideHintBar();
             // CHANGE (emotion): clear all Tater mood classes on restart (uses TATER_MOOD_CLASSES)
             resetTaterEmotionalState();
             // Game-over polish - Clear cinematic effects
@@ -3781,6 +3969,8 @@
             invalidateCandidateCache(); // Step 2.6 spawn gate accuracy
             scoreDisplay.textContent = '0'; updateLives();
             resetJourneyState(); // Journey framing - reset location display and milestone tracking
+            resetAmbientRamp(); // CHANGE (ambient-ramp): Reset to normal speed for pre-run
+            resetHighSpeedVisual(); // CHANGE (high-speed-visual): Remove high-speed class on reset
             obstacles.forEach(o => o.element.remove()); obstacles = [];
             powerups.forEach(p => p.element.remove()); powerups = [];
             pauseOverlay.classList.remove('show'); gameOverOverlay.classList.remove('show');
@@ -3802,6 +3992,8 @@
             if (!isPaused && !isGameOver && !inHitStop && !tutorialActive && !preRunState) {
                 frameCount++; // Anti-cluster: increment frame counter for recovery tracking
                 updateJumpCharge(); updatePhysics(); updateObstacles();
+                updateAmbientRamp(score); // CHANGE (ambient-ramp): Smooth easing each frame
+                updateHighSpeedVisual(score); // CHANGE (high-speed-visual): Dampen noisy idle animations
 
                 // Step 2.5 spawn pacing - check for pattern queue opportunity
                 maybeQueuePattern();
@@ -4026,20 +4218,7 @@
             startPrompt.classList.add('show');
         }
         showTutorial(); gameLoop();
- // --- SAFETY START FIX ---
-document.addEventListener('pointerdown', (e) => {
-  // ignore right-click / secondary button
-  if (e.button !== undefined && e.button !== 0) return;
-
-  if (typeof preRunState === 'undefined') return;
-
-  if (preRunState && !isGameOver && !isPaused && !tutorialActive) {
-    preRunState = false;
-    document.body.classList.add('playing');
-    if (typeof hideStartPrompt === 'function') hideStartPrompt();
-  }
-}, { once: true });
-
+        // REMOVED: SAFETY START FIX block — startJump() already handles preRunState transition
     </script>
 </body>
 </html>
