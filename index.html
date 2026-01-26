@@ -1253,7 +1253,7 @@
         body.reduce-motion .sprite.telegraph {
             animation: none !important;
             opacity: 1 !important;
-            transform: none !important;
+            transform: translate3d(0, 0, 0) scale(1) !important; /* Explicit end state to prevent snap */
         }
         body.reduce-motion .powerup {
             animation: none !important;
@@ -1770,8 +1770,9 @@
             animation: none !important;
         }
         /* Mobile-only adjustment: lift Tater to avoid thumb occlusion */
+        /* Only apply during active play (body.playing) so pre-run state uses default bottom */
 @media (max-width: 520px) {
-  .tater-container {
+  body.playing .tater-container {
     left: 6%;
     bottom: 18%;
   }
@@ -3435,18 +3436,9 @@
             obstaclesContainer.appendChild(o);
 
             // CHANGE (spawn-ease): Determine eligibility for viewport-entry easing (high speed only)
+            // All entry animation logic is handled in updateObstacles() as single source of truth
             const reduceMotion = body.classList.contains('reduce-motion');
             const spawnEaseEligible = score >= 1000 && !reduceMotion;
-
-            // Flying objects polish - animation sequence: telegraph -> idle
-            // Delay telegraph when spawn-ease is active to let the entry animation complete first
-            setTimeout(() => {
-                sprite.classList.add('telegraph');
-                setTimeout(() => {
-                    sprite.classList.remove('telegraph');
-                    sprite.classList.add(idleClass);
-                }, 200);
-            }, spawnEaseEligible ? 400 : 180);
 
             obstacles.push({
                 element: o,
@@ -3612,11 +3604,28 @@
                 }
                 // Final position update (GPU-accelerated)
                 o.element.style.transform = `translate3d(${o.x - window.innerWidth}px, 0, 0)`;
-                // CHANGE (spawn-ease): Apply soft entry animation when obstacle enters viewport at high speed
-                if (o._spawnEaseEligible && !o._spawnEaseDone && o.x <= window.innerWidth) {
+                // CHANGE (spawn-ease): Single source of truth for entry animation when obstacle enters viewport
+                if (!o._spawnEaseDone && o.x <= window.innerWidth) {
                     o._spawnEaseDone = true;
-                    o._sprite.classList.add('spawning');
-                    setTimeout(() => o._sprite.classList.remove('spawning'), 220);
+                    if (o._spawnEaseEligible) {
+                        // High speed: Apply soft spawn-in easing, then go directly to idle (skip telegraph)
+                        o._sprite.classList.add('spawning');
+                        o._sprite.addEventListener('animationend', function onSpawnEnd() {
+                            o._sprite.classList.remove('spawning');
+                            if (!o._sprite.classList.contains(o._idleClass)) {
+                                o._sprite.classList.add(o._idleClass);
+                            }
+                        }, { once: true });
+                    } else {
+                        // Normal speed: telegraph -> idle sequence (no spawn-ease animation)
+                        o._sprite.classList.add('telegraph');
+                        o._sprite.addEventListener('animationend', function onTelegraphEnd() {
+                            o._sprite.classList.remove('telegraph');
+                            if (!o._sprite.classList.contains(o._idleClass)) {
+                                o._sprite.classList.add(o._idleClass);
+                            }
+                        }, { once: true });
+                    }
                 }
                 if (!o.scored && o.x < tr.left - 40) {
                     o.scored = true;
