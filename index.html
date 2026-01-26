@@ -421,8 +421,9 @@
             50% { transform: translateY(2px) scaleY(1.1); }
         }
 
-        /* Tater enhanced - idle breathing when not running */
-        .tater:not(.running):not(.hurt):not(.healed) {
+        /* Tater enhanced - idle breathing when not running (only during active play) */
+        /* Pre-run: Tater is static. Idle breathing starts after first run begins. */
+        body.playing .tater:not(.running):not(.hurt):not(.healed) {
             animation: tater-idle 2s ease-in-out infinite;
         }
         @keyframes tater-idle {
@@ -462,6 +463,11 @@
         }
 
         /* Flying objects polish - spawn-in animation (softened entry to reduce peripheral eye strain) */
+        /* Pre-state: holds obstacle invisible until viewport entry triggers animation (high speed only) */
+        .sprite.spawn-pending {
+            opacity: 0;
+            transform: translate3d(18px, 0, 0) scale(0.98);
+        }
         .sprite.spawning {
             animation: sprite-spawn 180ms ease-out forwards;
         }
@@ -1249,6 +1255,7 @@
         body.reduce-motion .tater:not(.running):not(.hurt):not(.healed) {
             animation: none !important;
         }
+        body.reduce-motion .sprite.spawn-pending,
         body.reduce-motion .sprite.spawning,
         body.reduce-motion .sprite.telegraph {
             animation: none !important;
@@ -2963,7 +2970,8 @@
             { id: 'umbrella', width: 55, height: 55, groundY: 25,
                 svg: `<svg viewBox="0 0 55 55"><path d="M 27 8 Q 5 12 5 28 Q 5 32 10 32 Q 12 28 15 28 Q 18 28 20 32 Q 22 28 27 28 Q 32 28 34 32 Q 36 28 39 28 Q 42 28 44 32 Q 49 32 49 28 Q 49 12 27 8 Z" fill="#CC2020" stroke="#8A1010" stroke-width="1.5"/><ellipse cx="27" cy="10" rx="8" ry="3" fill="#DD3030"/><line x1="27" y1="8" x2="27" y2="48" stroke="#6B3510" stroke-width="3"/><path d="M 27 48 Q 22 52 20 48" stroke="#6B3510" stroke-width="3" fill="none" stroke-linecap="round"/></svg>` },
             // Visual pass: Frisbee with stronger outline
-            { id: 'frisbee', width: 50, height: 24, groundY: 20,
+            // CHANGE: Lowered groundY from 20 to 17 (~12px lower) so it hits non-jumping Tater
+            { id: 'frisbee', width: 50, height: 24, groundY: 17,
                 svg: `<svg viewBox="0 0 50 24"><ellipse cx="25" cy="12" rx="24" ry="11" fill="#3498DB" stroke="#1A6090" stroke-width="1.5"/><ellipse cx="25" cy="10" rx="20" ry="8" fill="#5DADE2"/><ellipse cx="25" cy="9" rx="14" ry="5" fill="#85C1E9"/><ellipse cx="25" cy="14" rx="22" ry="9" fill="none" stroke="#2980B9" stroke-width="2"/><ellipse cx="20" cy="8" rx="5" ry="2.5" fill="rgba(255,255,255,0.35)"/></svg>` }
         ];
 
@@ -3440,6 +3448,11 @@
             const reduceMotion = body.classList.contains('reduce-motion');
             const spawnEaseEligible = score >= 1000 && !reduceMotion;
 
+            // If eligible for spawn easing, add spawn-pending to hold invisible state until viewport entry
+            if (spawnEaseEligible) {
+                sprite.classList.add('spawn-pending');
+            }
+
             obstacles.push({
                 element: o,
                 x: window.innerWidth + 80,
@@ -3539,20 +3552,15 @@
             p.className = 'powerup';
 
             // Flying objects polish - wrap SVG in sprite div for animations (preserves hitbox)
+            // Powerups start with 'sprite' only - no spawn animation, appear immediately
             const sprite = document.createElement('div');
-            sprite.className = 'sprite spawning';
+            sprite.className = 'sprite';
             sprite.innerHTML = boneSVG;
             p.appendChild(sprite);
 
             // CHANGE (visual): use transform for smoother movement - set right:0 as anchor
             p.style.cssText = `width:45px;height:26px;right:0;bottom:${chosenHeight}%;will-change:transform`;
             obstaclesContainer.appendChild(p);
-
-            // Flying objects polish - animation sequence: spawn -> idle with float+glow
-            setTimeout(() => {
-                sprite.classList.remove('spawning');
-                sprite.classList.add('bone-idle');
-            }, 150);
 
             powerups.push({ element: p, x: window.innerWidth + 200, collected: false, height: chosenHeight });
             return true; // Step 2.7 powerup safety - indicate successful spawn
@@ -3609,7 +3617,9 @@
                     o._spawnEaseDone = true;
                     if (o._spawnEaseEligible) {
                         // High speed: Apply soft spawn-in easing, then go directly to idle (skip telegraph)
+                        // Add 'spawning' BEFORE removing 'spawn-pending' to prevent one-frame flash
                         o._sprite.classList.add('spawning');
+                        o._sprite.classList.remove('spawn-pending');
                         o._sprite.addEventListener('animationend', function onSpawnEnd() {
                             o._sprite.classList.remove('spawning');
                             if (!o._sprite.classList.contains(o._idleClass)) {
