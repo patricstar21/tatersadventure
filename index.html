@@ -109,6 +109,23 @@
             100% { transform: translateX(-50%); }
         }
 
+        /* Atmospheric haze layer - static gradient between far skyline and mid layer */
+        .atmospheric-haze {
+            position: absolute;
+            bottom: 28%;
+            left: 0;
+            width: 100%;
+            height: 60px;
+            background: linear-gradient(180deg,
+                rgba(180, 200, 220, 0) 0%,
+                rgba(180, 200, 220, 0.12) 40%,
+                rgba(180, 200, 220, 0.18) 70%,
+                rgba(180, 200, 220, 0.08) 100%
+            );
+            pointer-events: none;
+            z-index: 1;
+        }
+
         .landmarks-mid {
             position: absolute;
             bottom: 28%;
@@ -1623,16 +1640,35 @@
             .location-display .location-progress { font-size: 11px; }
         }
         /* CHANGE (mobile HUD): consolidated single-source mobile layout rules */
-        /* Layout: Row 1 = lives + buttons | Row 2 = location (full width) | Row 3 = title | Row 4 = score */
-        /* Title during play: opacity 0.85 (subtle but readable). Location: no truncation. */
+        /* Layout: Row 1 = lives + buttons | Row 2 = Title (primary) | Row 3 = Location | Row 4 = Score */
+        /* Title during play: opacity 0.7 (subtle but readable). Location: no truncation. */
         @media (max-width: 520px) {
-            /* Row 2: Location display as full-width bar below HUD */
+            /* Mobile title hierarchy: Title is PRIMARY, below .ui-top with comfortable gap */
+            .game-title {
+                top: max(62px, calc(env(safe-area-inset-top) + 54px));
+                font-size: 15px;
+                background: rgba(255,255,255,0.95);
+                padding: 5px 14px;
+                border-radius: 8px;
+                z-index: 502;
+            }
+            /* Pre-run: title is prominent and larger */
+            body:not(.playing) .game-title {
+                opacity: 1;
+                font-size: 17px;
+            }
+            /* During play: title fades but stays readable */
+            body.playing .game-title {
+                opacity: 0.7;
+                font-size: 12px;
+            }
+            /* Location bar sits below title with clear gap */
             .location-display {
                 position: fixed;
-                top: max(52px, calc(env(safe-area-inset-top) + 44px));
+                top: max(100px, calc(env(safe-area-inset-top) + 92px));
                 left: max(8px, env(safe-area-inset-left));
                 right: max(8px, env(safe-area-inset-right));
-                max-width: none; /* Remove max-width constraint */
+                max-width: none;
                 width: auto;
                 padding: 6px 12px;
                 font-size: 11px;
@@ -1643,7 +1679,6 @@
                 align-items: center;
                 gap: 8px;
             }
-            /* Mobile: location name never truncates - allow wrap */
             .location-display .location-name {
                 font-size: 12px;
                 white-space: normal;
@@ -1657,44 +1692,34 @@
                 display: inline;
                 opacity: 0.8;
             }
-            /* Mobile: title moves below location bar */
-            .game-title {
-                top: max(90px, calc(env(safe-area-inset-top) + 82px));
-                font-size: 11px;
-                background: rgba(255,255,255,0.95);
-                padding: 3px 10px;
-            }
-            /* Mobile: score moves below title */
+            /* Score below location bar */
             .score-display {
-                top: max(115px, calc(env(safe-area-inset-top) + 107px));
-            }
-            /* CHANGE (UI): Mobile title stays readable during play (was 0.3, now 0.85) */
-            body.playing .game-title {
-                opacity: 0.85;
-                font-size: 10px;
-            }
-            body:not(.playing) .game-title {
-                opacity: 1;
+                top: max(140px, calc(env(safe-area-inset-top) + 132px));
             }
         }
-        /* CHANGE (mobile HUD): 360px refinements for extra small screens */
-        /* Keeps same 2-row layout, just tighter spacing */
+        /* 360px: Same hierarchy (Title > Location > Score), slightly tighter but still comfortable */
         @media (max-width: 360px) {
+            .game-title {
+                top: max(58px, calc(env(safe-area-inset-top) + 50px));
+                font-size: 13px;
+                padding: 4px 10px;
+            }
+            body:not(.playing) .game-title {
+                font-size: 15px;
+            }
+            body.playing .game-title {
+                font-size: 11px;
+            }
             .location-display {
-                top: max(48px, calc(env(safe-area-inset-top) + 40px));
+                top: max(92px, calc(env(safe-area-inset-top) + 84px));
                 padding: 4px 8px;
                 font-size: 9px;
                 gap: 6px;
             }
             .location-display .location-name { font-size: 10px; }
             .location-display .location-progress { font-size: 8px; }
-            .game-title {
-                top: max(76px, calc(env(safe-area-inset-top) + 68px));
-                font-size: 10px;
-                padding: 2px 8px;
-            }
             .score-display {
-                top: max(98px, calc(env(safe-area-inset-top) + 90px));
+                top: max(126px, calc(env(safe-area-inset-top) + 118px));
                 padding: 4px 10px;
                 font-size: 11px;
             }
@@ -1814,6 +1839,7 @@
         <div class="sky"></div>
         <div class="clouds" id="clouds"></div>
         <div class="landmarks-far" id="landmarksFar"></div>
+        <div class="atmospheric-haze"></div>
         <div class="landmarks-mid" id="landmarksMid"></div>
         <div class="park-elements" id="parkElements"></div>
         <div class="grass"></div>
@@ -2613,6 +2639,10 @@
         let obstacles = [], powerups = [], lastSpawnTime = 0, lastPowerupTime = 0;
         let gameSpeed = 1, invulnerable = false;
 
+        // Ship-hardening: game loop guard to prevent multiple loops running
+        let gameLoopId = null;
+        let gameLoopRunning = false;
+
         // Mobile UX: Compute baseline offset to lift gameplay band on small screens
         // Desktop/tablet: 0 offset (baseY stays 9%). Mobile ≤520px: +9 offset (baseY becomes 18%)
         const DESKTOP_BASE_Y = 9;
@@ -3133,6 +3163,25 @@
             }
             duplicateForSeamless(clouds, cloudBaseWidth);
 
+            // Helper: generate non-adjacent placement indices for variety
+            // Returns an array of indices that avoids placing the same SVG type adjacent
+            function generateNonAdjacentIndices(count, svgArrayLength) {
+                const indices = [];
+                let lastIdx = -1;
+                for (let i = 0; i < count; i++) {
+                    // Build pool of valid choices (exclude last used index)
+                    const pool = [];
+                    for (let j = 0; j < svgArrayLength; j++) {
+                        if (j !== lastIdx) pool.push(j);
+                    }
+                    // Pick deterministically based on position for consistency
+                    const pick = pool[i % pool.length];
+                    indices.push(pick);
+                    lastIdx = pick;
+                }
+                return indices;
+            }
+
             // FAR LAYER - London skyline with iconic landmarks + terraced roofs with chimneys
             const farSVGs = [
                 // Big Ben / Elizabeth Tower silhouette
@@ -3150,13 +3199,20 @@
                 // The Shard silhouette
                 `<svg width="35" height="150" viewBox="0 0 35 150"><polygon points="17.5,0 5,150 30,150" fill="#7888A0" opacity="0.4"/><line x1="17.5" y1="20" x2="17.5" y2="145" stroke="#8898B0" stroke-width="1" opacity="0.3"/><line x1="10" y1="50" x2="25" y2="50" stroke="#8898B0" stroke-width="1" opacity="0.25"/><line x1="8" y1="90" x2="27" y2="90" stroke="#8898B0" stroke-width="1" opacity="0.25"/></svg>`,
                 // More townhouses with chimneys
-                `<svg width="90" height="90" viewBox="0 0 90 90"><rect x="2" y="28" width="26" height="62" fill="#9898A0" opacity="0.42"/><rect x="30" y="32" width="28" height="58" fill="#A0A098" opacity="0.42"/><rect x="60" y="25" width="28" height="65" fill="#A898A0" opacity="0.42"/><rect x="8" y="18" width="4" height="12" fill="#707078" opacity="0.5"/><rect x="20" y="20" width="4" height="10" fill="#707078" opacity="0.5"/><rect x="38" y="22" width="4" height="12" fill="#707078" opacity="0.5"/><rect x="50" y="24" width="4" height="10" fill="#707078" opacity="0.5"/><rect x="68" y="15" width="4" height="12" fill="#707078" opacity="0.5"/><rect x="80" y="17" width="4" height="10" fill="#707078" opacity="0.5"/><rect x="6" y="42" width="6" height="10" fill="#B0A8A0" opacity="0.3"/><rect x="16" y="42" width="6" height="10" fill="#B0A8A0" opacity="0.3"/><rect x="36" y="46" width="6" height="10" fill="#B0A8A0" opacity="0.3"/><rect x="46" y="46" width="6" height="10" fill="#B0A8A0" opacity="0.3"/><rect x="66" y="40" width="6" height="10" fill="#B0A8A0" opacity="0.3"/><rect x="76" y="40" width="6" height="10" fill="#B0A8A0" opacity="0.3"/></svg>`
+                `<svg width="90" height="90" viewBox="0 0 90 90"><rect x="2" y="28" width="26" height="62" fill="#9898A0" opacity="0.42"/><rect x="30" y="32" width="28" height="58" fill="#A0A098" opacity="0.42"/><rect x="60" y="25" width="28" height="65" fill="#A898A0" opacity="0.42"/><rect x="8" y="18" width="4" height="12" fill="#707078" opacity="0.5"/><rect x="20" y="20" width="4" height="10" fill="#707078" opacity="0.5"/><rect x="38" y="22" width="4" height="12" fill="#707078" opacity="0.5"/><rect x="50" y="24" width="4" height="10" fill="#707078" opacity="0.5"/><rect x="68" y="15" width="4" height="12" fill="#707078" opacity="0.5"/><rect x="80" y="17" width="4" height="10" fill="#707078" opacity="0.5"/><rect x="6" y="42" width="6" height="10" fill="#B0A8A0" opacity="0.3"/><rect x="16" y="42" width="6" height="10" fill="#B0A8A0" opacity="0.3"/><rect x="36" y="46" width="6" height="10" fill="#B0A8A0" opacity="0.3"/><rect x="46" y="46" width="6" height="10" fill="#B0A8A0" opacity="0.3"/><rect x="66" y="40" width="6" height="10" fill="#B0A8A0" opacity="0.3"/><rect x="76" y="40" width="6" height="10" fill="#B0A8A0" opacity="0.3"/></svg>`,
+                // NEW: The Gherkin (30 St Mary Axe) silhouette
+                `<svg width="40" height="130" viewBox="0 0 40 130"><ellipse cx="20" cy="65" rx="18" ry="60" fill="#8090A0" opacity="0.4"/><ellipse cx="20" cy="10" rx="8" ry="8" fill="#8898B0" opacity="0.35"/><line x1="8" y1="30" x2="32" y2="30" stroke="#7080A0" stroke-width="1" opacity="0.25"/><line x1="5" y1="50" x2="35" y2="50" stroke="#7080A0" stroke-width="1" opacity="0.25"/><line x1="4" y1="70" x2="36" y2="70" stroke="#7080A0" stroke-width="1" opacity="0.25"/><line x1="5" y1="90" x2="35" y2="90" stroke="#7080A0" stroke-width="1" opacity="0.25"/><line x1="8" y1="110" x2="32" y2="110" stroke="#7080A0" stroke-width="1" opacity="0.25"/><path d="M 10 20 Q 20 65 10 115" stroke="#7888A0" stroke-width="1" fill="none" opacity="0.3"/><path d="M 30 20 Q 20 65 30 115" stroke="#7888A0" stroke-width="1" fill="none" opacity="0.3"/></svg>`,
+                // NEW: Westminster Bridge span with lampposts
+                `<svg width="160" height="80" viewBox="0 0 160 80"><path d="M 0 70 Q 40 50 80 70 Q 120 50 160 70" stroke="#8090A0" stroke-width="6" fill="none" opacity="0.38"/><rect x="0" y="70" width="160" height="10" fill="#8898A8" opacity="0.35"/><rect x="38" y="35" width="4" height="35" fill="#707080" opacity="0.45"/><ellipse cx="40" cy="32" rx="5" ry="6" fill="#9098A8" opacity="0.4"/><rect x="78" y="30" width="4" height="40" fill="#707080" opacity="0.45"/><ellipse cx="80" cy="27" rx="5" ry="6" fill="#9098A8" opacity="0.4"/><rect x="118" y="35" width="4" height="35" fill="#707080" opacity="0.45"/><ellipse cx="120" cy="32" rx="5" ry="6" fill="#9098A8" opacity="0.4"/></svg>`,
+                // NEW: Dense chimney pots cluster (Victorian industrial roofline)
+                `<svg width="110" height="85" viewBox="0 0 110 85"><rect x="2" y="40" width="25" height="45" fill="#9090A0" opacity="0.4"/><rect x="29" y="35" width="25" height="50" fill="#9898A8" opacity="0.4"/><rect x="56" y="42" width="25" height="43" fill="#8888A0" opacity="0.4"/><rect x="83" y="38" width="25" height="47" fill="#9090A8" opacity="0.4"/><rect x="6" y="28" width="5" height="14" fill="#606068" opacity="0.5"/><rect x="14" y="30" width="5" height="12" fill="#606068" opacity="0.5"/><rect x="33" y="22" width="5" height="15" fill="#606068" opacity="0.5"/><rect x="41" y="25" width="5" height="12" fill="#606068" opacity="0.5"/><rect x="49" y="23" width="5" height="14" fill="#606068" opacity="0.5"/><rect x="60" y="30" width="5" height="14" fill="#606068" opacity="0.5"/><rect x="68" y="32" width="5" height="12" fill="#606068" opacity="0.5"/><rect x="76" y="30" width="5" height="14" fill="#606068" opacity="0.5"/><rect x="87" y="26" width="5" height="14" fill="#606068" opacity="0.5"/><rect x="95" y="28" width="5" height="12" fill="#606068" opacity="0.5"/><rect x="103" y="26" width="5" height="14" fill="#606068" opacity="0.5"/></svg>`
             ];
             const farBaseWidth = window.innerWidth;
+            const farIndices = generateNonAdjacentIndices(8, farSVGs.length);
             let x = 0;
             for (let i = 0; i < 8; i++) {
                 const d = document.createElement('div');
-                d.innerHTML = farSVGs[i % farSVGs.length];
+                d.innerHTML = farSVGs[farIndices[i]];
                 d.style.cssText = `position:absolute;left:${x}px;bottom:0`;
                 far.appendChild(d);
                 x += farBaseWidth / 8;
@@ -3175,22 +3231,25 @@
                 `<svg width="24" height="55" viewBox="0 0 24 55"><rect x="10" y="25" width="4" height="30" fill="#1A1A1A" opacity="0.7"/><circle cx="12" cy="12" r="11" fill="none" stroke="#CC2020" stroke-width="4" opacity="0.75"/><rect x="2" y="8" width="20" height="8" fill="#1A3A6E" opacity="0.75"/></svg>`,
                 // Black cab
                 `<svg width="40" height="28" viewBox="0 0 40 28"><rect x="4" y="10" width="32" height="18" rx="3" fill="#1A1A1A" opacity="0.75"/><path d="M 8 10 Q 8 4 16 4 L 28 4 Q 32 4 32 10" fill="#1A1A1A" opacity="0.75"/><rect x="8" y="6" width="10" height="8" rx="1" fill="#88AACC" opacity="0.5"/><rect x="22" y="6" width="8" height="8" rx="1" fill="#88AACC" opacity="0.5"/><circle cx="10" cy="26" r="3" fill="#222" opacity="0.8"/><circle cx="30" cy="26" r="3" fill="#222" opacity="0.8"/></svg>`,
-                // Victorian lamppost (duplicate for more density)
-                `<svg width="14" height="60" viewBox="0 0 14 60"><rect x="5" y="18" width="4" height="42" fill="#2A2A2A" opacity="0.7"/><ellipse cx="7" cy="60" rx="6" ry="2" fill="#2A2A2A" opacity="0.6"/><path d="M 2 18 Q 2 8 7 6 Q 12 8 12 18" fill="#3A3A3A" opacity="0.7"/><ellipse cx="7" cy="10" rx="4" ry="5" fill="#FFE4A0" opacity="0.4"/><rect x="4" y="15" width="6" height="4" fill="#3A3A3A" opacity="0.7"/></svg>`,
+                // Victorian lamppost (variant with double lamp)
+                `<svg width="18" height="60" viewBox="0 0 18 60"><rect x="7" y="18" width="4" height="42" fill="#2A2A2A" opacity="0.7"/><ellipse cx="9" cy="60" rx="6" ry="2" fill="#2A2A2A" opacity="0.6"/><path d="M 2 18 Q 2 10 9 8 Q 16 10 16 18" fill="#3A3A3A" opacity="0.7"/><ellipse cx="4" cy="12" rx="3" ry="4" fill="#FFE4A0" opacity="0.4"/><ellipse cx="14" cy="12" rx="3" ry="4" fill="#FFE4A0" opacity="0.4"/><rect x="5" y="15" width="8" height="4" fill="#3A3A3A" opacity="0.7"/></svg>`,
                 // Park tree
                 `<svg width="35" height="55" viewBox="0 0 35 55"><rect x="14" y="35" width="6" height="20" fill="#5D4423" opacity="0.8"/><ellipse cx="17" cy="22" rx="15" ry="20" fill="#3A7A3A" opacity="0.7"/><ellipse cx="12" cy="18" rx="8" ry="10" fill="#4A8A4A" opacity="0.6"/></svg>`,
                 // Postbox (iconic British red)
                 `<svg width="16" height="35" viewBox="0 0 16 35"><rect x="2" y="8" width="12" height="27" rx="2" fill="#CC2020" opacity="0.75"/><ellipse cx="8" cy="8" rx="6" ry="4" fill="#CC2020" opacity="0.75"/><rect x="4" y="14" width="8" height="3" fill="#1A1A1A" opacity="0.4"/><ellipse cx="8" cy="6" rx="3" ry="2" fill="#DD3030" opacity="0.6"/></svg>`,
                 // Wrought iron railing section
                 `<svg width="45" height="30" viewBox="0 0 45 30"><rect x="0" y="5" width="45" height="3" fill="#1A1A1A" opacity="0.6"/><rect x="0" y="25" width="45" height="3" fill="#1A1A1A" opacity="0.6"/><rect x="2" y="5" width="2" height="23" fill="#1A1A1A" opacity="0.6"/><rect x="12" y="5" width="2" height="23" fill="#1A1A1A" opacity="0.6"/><rect x="22" y="5" width="2" height="23" fill="#1A1A1A" opacity="0.6"/><rect x="32" y="5" width="2" height="23" fill="#1A1A1A" opacity="0.6"/><rect x="42" y="5" width="2" height="23" fill="#1A1A1A" opacity="0.6"/><ellipse cx="7" cy="12" rx="3" ry="4" fill="none" stroke="#1A1A1A" stroke-width="1.5" opacity="0.5"/><ellipse cx="17" cy="12" rx="3" ry="4" fill="none" stroke="#1A1A1A" stroke-width="1.5" opacity="0.5"/><ellipse cx="27" cy="12" rx="3" ry="4" fill="none" stroke="#1A1A1A" stroke-width="1.5" opacity="0.5"/><ellipse cx="37" cy="12" rx="3" ry="4" fill="none" stroke="#1A1A1A" stroke-width="1.5" opacity="0.5"/></svg>`,
-                // Black cab (another)
-                `<svg width="40" height="28" viewBox="0 0 40 28"><rect x="4" y="10" width="32" height="18" rx="3" fill="#1A1A1A" opacity="0.75"/><path d="M 8 10 Q 8 4 16 4 L 28 4 Q 32 4 32 10" fill="#1A1A1A" opacity="0.75"/><rect x="8" y="6" width="10" height="8" rx="1" fill="#88AACC" opacity="0.5"/><rect x="22" y="6" width="8" height="8" rx="1" fill="#88AACC" opacity="0.5"/><circle cx="10" cy="26" r="3" fill="#222" opacity="0.8"/><circle cx="30" cy="26" r="3" fill="#222" opacity="0.8"/></svg>`
+                // Black cab (variant facing other way)
+                `<svg width="40" height="28" viewBox="0 0 40 28"><rect x="4" y="10" width="32" height="18" rx="3" fill="#1A1A1A" opacity="0.75"/><path d="M 32 10 Q 32 4 24 4 L 12 4 Q 8 4 8 10" fill="#1A1A1A" opacity="0.75"/><rect x="10" y="6" width="8" height="8" rx="1" fill="#88AACC" opacity="0.5"/><rect x="22" y="6" width="10" height="8" rx="1" fill="#88AACC" opacity="0.5"/><circle cx="10" cy="26" r="3" fill="#222" opacity="0.8"/><circle cx="30" cy="26" r="3" fill="#222" opacity="0.8"/></svg>`,
+                // Bollard (simple street furniture)
+                `<svg width="12" height="28" viewBox="0 0 12 28"><rect x="3" y="8" width="6" height="20" fill="#1A1A1A" opacity="0.7"/><ellipse cx="6" cy="8" rx="5" ry="3" fill="#2A2A2A" opacity="0.7"/><ellipse cx="6" cy="28" rx="5" ry="2" fill="#1A1A1A" opacity="0.6"/></svg>`
             ];
             const midBaseWidth = window.innerWidth;
+            const midIndices = generateNonAdjacentIndices(12, midSVGs.length);
             x = 0;
             for (let i = 0; i < 12; i++) {
                 const d = document.createElement('div');
-                d.innerHTML = midSVGs[i % midSVGs.length];
+                d.innerHTML = midSVGs[midIndices[i]];
                 d.style.cssText = `position:absolute;left:${x}px;bottom:0`;
                 mid.appendChild(d);
                 x += midBaseWidth / 12;
@@ -4164,6 +4223,7 @@
 
         function resetGame() {
             score = 0; lives = MAX_LIVES; gameSpeed = 1; isGameOver = false; isPaused = false; isJumping = false; isHolding = false; jumpPower = 0; velocity = 0; taterY = 0; invulnerable = false; // uses MAX_LIVES
+            hitStopUntil = 0; // Ship-hardening: clear any pending hit-stop
             // Visual hierarchy & pacing - Part B: Reset to pre-run state
             preRunState = true;
             body.classList.remove('playing');
@@ -4197,6 +4257,10 @@
         }
 
         function gameLoop() {
+            // Ship-hardening: guard against multiple loops
+            if (gameLoopRunning) return;
+            gameLoopRunning = true;
+
             const now = Date.now();
             // Step 3 juice - skip game updates during hit-stop (CSS animations continue)
             const inHitStop = now < hitStopUntil;
@@ -4298,7 +4362,16 @@
             // Priority 3: Update debug HUD (throttled, no gameplay impact)
             updateDebugHud(now);
 
-            requestAnimationFrame(gameLoop);
+            // Ship-hardening: store animation frame ID and release guard
+            gameLoopRunning = false;
+            gameLoopId = requestAnimationFrame(gameLoop);
+        }
+
+        // Ship-hardening: safe game loop starter (prevents double-start)
+        function startGameLoop() {
+            if (gameLoopId !== null) return; // Loop already running
+            gameLoopRunning = false;
+            gameLoopId = requestAnimationFrame(gameLoop);
         }
 
         // Step 3 sound - initialize audio on first user interaction
@@ -4473,14 +4546,53 @@
 
         applyBaseYToTater(true);
 
-        // Mobile UX: Update baseY on resize to handle orientation changes
-        window.addEventListener('resize', () => { baseY = getBaseY(); });
+        // Mobile baseline: keep band aligned on resize/orientation
+        // Re-anchors Tater + all obstacles + all powerups to new baseline offset
+        let prevBaselineOffset = getMobileBaselineOffset();
+        let resizeDebounceTimer = null;
+
+        function handleViewportChange() {
+            // Debounce to avoid thrashing during resize drag
+            if (resizeDebounceTimer) clearTimeout(resizeDebounceTimer);
+            resizeDebounceTimer = setTimeout(() => {
+                requestAnimationFrame(() => {
+                    const newOffset = getMobileBaselineOffset();
+
+                    // Skip if offset didn't change (most resize events)
+                    if (newOffset === prevBaselineOffset) return;
+
+                    // Update baseline (no physics reset)
+                    prevBaselineOffset = newOffset;
+                    baseY = getBaseY();
+
+                    // Re-anchor Tater (preserves mid-jump position via taterY)
+                    taterContainer.style.bottom = (baseY + (taterY / window.innerHeight) * 100) + '%';
+
+                    // Re-anchor all existing obstacles from stored groundY
+                    for (const o of obstacles) {
+                        if (o.element && o.type) {
+                            o.element.style.bottom = (o.type.groundY + newOffset) + '%';
+                        }
+                    }
+
+                    // Re-anchor all existing powerups from stored height
+                    for (const p of powerups) {
+                        if (p.element && p.height !== undefined) {
+                            p.element.style.bottom = (p.height + newOffset) + '%';
+                        }
+                    }
+                });
+            }, 120);
+        }
+
+        window.addEventListener('resize', handleViewportChange);
+        window.addEventListener('orientationchange', handleViewportChange);
 
         runShipSanityChecks(); // Priority 2: Run sanity checks before game starts
         if (!tutorialActive) {
             startPrompt.classList.add('show');
         }
-        showTutorial(); gameLoop();
+        showTutorial(); startGameLoop();
         // REMOVED: SAFETY START FIX block — startJump() already handles preRunState transition
     </script>
 </body>
