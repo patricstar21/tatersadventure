@@ -1260,7 +1260,7 @@
         body.reduce-motion .sprite.telegraph {
             animation: none !important;
             opacity: 1 !important;
-            transform: translate3d(0, 0, 0) scale(1) !important; /* Explicit end state to prevent snap */
+            transform: none !important;
         }
         body.reduce-motion .powerup {
             animation: none !important;
@@ -1646,6 +1646,28 @@
             }
             body:not(.playing) .game-title {
                 opacity: 1;
+            }
+        }
+        /* MOBILE LAYOUT FIX: 480px breakpoint for better spacing */
+        /* Prevents location-display from overlapping game-title on mid-sized phones */
+        @media (max-width: 480px) {
+            .location-display {
+                top: max(50px, calc(env(safe-area-inset-top) + 42px));
+                padding: 5px 10px;
+                font-size: 10px;
+                gap: 6px;
+            }
+            .location-display .location-name { font-size: 11px; }
+            .location-display .location-progress { font-size: 9px; }
+            .game-title {
+                top: max(82px, calc(env(safe-area-inset-top) + 74px));
+                font-size: 10px;
+                padding: 2px 8px;
+            }
+            .score-display {
+                top: max(104px, calc(env(safe-area-inset-top) + 96px));
+                font-size: 14px;
+                padding: 6px 14px;
             }
         }
         /* CHANGE (mobile HUD): 360px refinements for extra small screens */
@@ -2527,6 +2549,7 @@
         let isHolding = false, jumpPower = 0, velocity = 0, taterY = 0;
         let obstacles = [], powerups = [], lastSpawnTime = 0, lastPowerupTime = 0;
         let gameSpeed = 1, invulnerable = false, baseY = 9;
+        let lastCollisionCategory = null; // Track air/ground for contextual game-over messages
         // Visual hierarchy & pacing - Part B: Pre-run state
 
         // ========================================================================
@@ -2750,6 +2773,7 @@
         let lastSpawnedCategory = null; // Step 2.5 spawn pacing - track ground/air category
         let patternQueue = [];          // Step 2.5 spawn pacing - queued pattern obstacles
         let lastTallSpawnFrame = 0;     // Anti-cluster: tracks frame when tall hazard spawned
+        let pendingBaitAir = null;      // BAIT PAIR: scheduled air hazard after ground spawn
 
         // Gameplay polish - DEBUG flag for spawn decision logging
         const DEBUG = false;
@@ -2761,7 +2785,7 @@
 
         // Step 2.5 spawn pacing - categorization constants
         // ROSTER UPDATE: removed firework/hairdryer, added umbrella/frisbee, moved pigeon to air
-        const AIR_HAZARDS = ['thunder', 'balloon', 'umbrella', 'frisbee', 'pigeon']; // groundY >= 12
+        const AIR_HAZARDS = ['thunder', 'balloon', 'umbrella', 'frisbee', 'pigeon']; // groundY >= 11 (frisbee lowest)
         const GROUND_HAZARDS = ['mailman', 'vacuum', 'cat', 'cone', 'vet', 'squirrel', 'skateboard'];
         const TALL_HAZARDS = ['mailman', 'vet', 'cone', 'vacuum']; // height 50+ or width 60+
         const SMALL_HAZARDS = ['cat', 'squirrel', 'skateboard'];
@@ -2783,6 +2807,23 @@
         const BREATHER_INTERVAL = 4;     // Guarantee breather after this many consecutive spawns
         const BREATHER_DELAY = 1000;     // Extra delay ms for breather
         const PATTERN_SCORE_INTERVAL = 150; // Trigger pattern every N score points
+
+        // BAIT PAIR SYSTEM - Decision-hard pattern: punish hesitation (holding jump), not timing
+        // After ground hazard, sometimes queue a low air hazard that catches long jumps
+        const BAIT_PAIR_MIN_SCORE = 800;      // Don't enable until player is experienced
+        const BAIT_PAIR_FULL_SCORE = 1400;    // Full frequency at this score
+        const BAIT_PAIR_MIN_CHANCE = 0.08;    // 8% chance at BAIT_PAIR_MIN_SCORE
+        const BAIT_PAIR_MAX_CHANCE = 0.28;    // 28% chance at BAIT_PAIR_FULL_SCORE and beyond
+        const BAIT_PAIR_SPACING_PX = 320;     // FAIRNESS FIX: Min distance between ground and air hazard
+        const BAIT_AIR_HAZARDS = ['frisbee', 'balloon']; // Low air hazards that catch held jumps
+
+        // TEACHING SEQUENCE - Early-game clarity through spacing
+        // First low-air-hazard gets extra spacing so player learns "this requires a jump"
+        // First bait pair gets extra spacing so player learns "short hop, don't hold"
+        const FIRST_LOW_AIR_EXTRA_SPACING = 80;   // Extra px for first frisbee/balloon
+        const BAIT_PAIR_EARLY_SPACING_PX = 380;   // Wider spacing for first bait pairs (very readable)
+        const BAIT_PAIR_SPACING_TIGHTEN_SCORE = 1100; // Score at which bait spacing reaches normal
+        let firstLowAirSpawned = false;           // Track if first frisbee/balloon has appeared
 
         // ============================================================
         // DIFFICULTY CURVE SYSTEM - 3-Act emotional arc
@@ -2970,8 +3011,8 @@
             { id: 'umbrella', width: 55, height: 55, groundY: 25,
                 svg: `<svg viewBox="0 0 55 55"><path d="M 27 8 Q 5 12 5 28 Q 5 32 10 32 Q 12 28 15 28 Q 18 28 20 32 Q 22 28 27 28 Q 32 28 34 32 Q 36 28 39 28 Q 42 28 44 32 Q 49 32 49 28 Q 49 12 27 8 Z" fill="#CC2020" stroke="#8A1010" stroke-width="1.5"/><ellipse cx="27" cy="10" rx="8" ry="3" fill="#DD3030"/><line x1="27" y1="8" x2="27" y2="48" stroke="#6B3510" stroke-width="3"/><path d="M 27 48 Q 22 52 20 48" stroke="#6B3510" stroke-width="3" fill="none" stroke-linecap="round"/></svg>` },
             // Visual pass: Frisbee with stronger outline
-            // CHANGE: Lowered groundY from 20 to 17 (~12px lower) so it hits non-jumping Tater
-            { id: 'frisbee', width: 50, height: 24, groundY: 17,
+            // FINAL: groundY 7 — reliably hits standing Tater, still reads as airborne
+            { id: 'frisbee', width: 50, height: 24, groundY: 7,
                 svg: `<svg viewBox="0 0 50 24"><ellipse cx="25" cy="12" rx="24" ry="11" fill="#3498DB" stroke="#1A6090" stroke-width="1.5"/><ellipse cx="25" cy="10" rx="20" ry="8" fill="#5DADE2"/><ellipse cx="25" cy="9" rx="14" ry="5" fill="#85C1E9"/><ellipse cx="25" cy="14" rx="22" ry="9" fill="none" stroke="#2980B9" stroke-width="2"/><ellipse cx="20" cy="8" rx="5" ry="2.5" fill="rgba(255,255,255,0.35)"/></svg>` }
         ];
 
@@ -3163,6 +3204,13 @@
 
             if (lastIsAir || nextIsAir) spacing += AIR_EXTRA_SPACING;
             if (lastIsTall || nextIsTall) spacing += TALL_EXTRA_SPACING;
+
+            // TEACHING SEQUENCE: First low-air-hazard gets extra spacing for clarity
+            // Player learns "this requires a jump" with generous reaction time
+            const nextIsLowAir = nextType && BAIT_AIR_HAZARDS.includes(nextType.id);
+            if (nextIsLowAir && !firstLowAirSpawned) {
+                spacing += FIRST_LOW_AIR_EXTRA_SPACING;
+            }
 
             // Difficulty curve - apply tier-based spacing multiplier
             spacing *= getSpacingMultiplier(tier);
@@ -3389,6 +3437,80 @@
             }
         }
 
+        // BAIT PAIR SYSTEM - Calculate spawn chance based on score (ramps 800→1400)
+        function getBaitPairChance() {
+            if (score < BAIT_PAIR_MIN_SCORE) return 0;
+            if (score >= BAIT_PAIR_FULL_SCORE) return BAIT_PAIR_MAX_CHANCE;
+            // Linear ramp between min and max
+            const progress = (score - BAIT_PAIR_MIN_SCORE) / (BAIT_PAIR_FULL_SCORE - BAIT_PAIR_MIN_SCORE);
+            return BAIT_PAIR_MIN_CHANCE + progress * (BAIT_PAIR_MAX_CHANCE - BAIT_PAIR_MIN_CHANCE);
+        }
+
+        // BAIT PAIR SYSTEM - Calculate progressive spacing (wider early, tightens over time)
+        // TEACHING SEQUENCE: First bait pairs are more readable, spacing tightens as player learns
+        function getBaitPairSpacing() {
+            if (score <= BAIT_PAIR_MIN_SCORE) return BAIT_PAIR_EARLY_SPACING_PX;
+            if (score >= BAIT_PAIR_SPACING_TIGHTEN_SCORE) return BAIT_PAIR_SPACING_PX;
+            // Linear interpolation from early (240px) to normal (180px)
+            const progress = (score - BAIT_PAIR_MIN_SCORE) / (BAIT_PAIR_SPACING_TIGHTEN_SCORE - BAIT_PAIR_MIN_SCORE);
+            return BAIT_PAIR_EARLY_SPACING_PX - progress * (BAIT_PAIR_EARLY_SPACING_PX - BAIT_PAIR_SPACING_PX);
+        }
+
+        // BAIT PAIR SYSTEM - Maybe schedule bait air after ground spawn
+        // Called when a ground hazard is spawned; may set pendingBaitAir
+        function maybeScheduleBaitPair(groundObstacle) {
+            // Don't stack: skip if pattern queue active or bait already pending
+            if (patternQueue.length > 0 || pendingBaitAir !== null) return;
+
+            // Roll for bait pair
+            if (Math.random() >= getBaitPairChance()) return;
+
+            // Choose a low air hazard (frisbee or balloon)
+            const baitType = BAIT_AIR_HAZARDS[Math.floor(Math.random() * BAIT_AIR_HAZARDS.length)];
+
+            // TEACHING SEQUENCE: Use progressive spacing (wider at first, normal later)
+            const spacing = getBaitPairSpacing();
+
+            // Schedule: spawn when ground obstacle has moved spacing into view
+            // This means the air hazard spawns at spawnX when ground is at (spawnX - spacing)
+            // Using x-coordinate trigger ensures spacing is exact regardless of frame timing
+            pendingBaitAir = {
+                type: baitType,
+                triggerWhenGroundAt: window.innerWidth - spacing,
+                groundObstacle: groundObstacle
+            };
+        }
+
+        // BAIT PAIR SYSTEM - Check if pending bait should spawn now
+        // Called each frame; spawns air hazard when ground obstacle reaches trigger position
+        function maybeSpawnBaitAir() {
+            if (!pendingBaitAir) return;
+
+            const ground = pendingBaitAir.groundObstacle;
+            // Check if ground obstacle has moved far enough (or been removed)
+            if (!ground.element.parentNode || ground.x <= pendingBaitAir.triggerWhenGroundAt) {
+                // FAIRNESS CHECK: Skip bait if it would cluster with recent obstacles
+                const baitTypeId = pendingBaitAir.type;
+                const baitType = scaryThings.find(t => t.id === baitTypeId);
+
+                if (baitType) {
+                    // Check if spawn would violate minimum spacing with rightmost obstacle
+                    const rightmostX = getRightmostObstacleX();
+                    const spawnX = window.innerWidth + 80;
+                    const minRequired = getMinSpacingPx(
+                        obstacles.length > 0 ? obstacles[obstacles.length - 1].type : null,
+                        baitType
+                    );
+
+                    // Only spawn if there's enough space; otherwise skip (don't force unfair pair)
+                    if (spawnX - rightmostX >= minRequired) {
+                        spawnObstacle(baitType);
+                    }
+                }
+                pendingBaitAir = null;
+            }
+        }
+
         // Step 2.6 spawn gate accuracy - Consume pattern queue item (only call when actually spawning)
         function consumePatternQueueItem() {
             if (patternQueue.length > 0) {
@@ -3412,6 +3534,10 @@
             if (AIR_HAZARDS.includes(t.id)) {
                 lastAirSpawnTime = now;
                 lastSpawnedCategory = 'air';
+                // TEACHING SEQUENCE: Mark first low-air-hazard as seen
+                if (BAIT_AIR_HAZARDS.includes(t.id) && !firstLowAirSpawned) {
+                    firstLowAirSpawned = true;
+                }
             } else {
                 lastSpawnedCategory = 'ground';
             }
@@ -3453,7 +3579,7 @@
                 sprite.classList.add('spawn-pending');
             }
 
-            obstacles.push({
+            const obstacleObj = {
                 element: o,
                 x: window.innerWidth + 80,
                 type: t,
@@ -3462,7 +3588,13 @@
                 _spawnEaseEligible: spawnEaseEligible,
                 _spawnEaseDone: false,
                 _idleClass: idleClass
-            });
+            };
+            obstacles.push(obstacleObj);
+
+            // BAIT PAIR: If this is a ground hazard, maybe schedule a follow-up air hazard
+            if (GROUND_HAZARDS.includes(t.id)) {
+                maybeScheduleBaitPair(obstacleObj);
+            }
 
             // Step 2.6 spawn gate accuracy - invalidate cache after spawning
             invalidateCandidateCache();
@@ -3605,6 +3737,8 @@
                         const or = o.element.getBoundingClientRect();
                         if (hb.left < or.right - 8 && hb.right > or.left + 8 && hb.top < or.bottom - 8 && hb.bottom > or.top + 8) {
                             o.hit = true;
+                            // Track collision type for contextual game-over messages
+                            lastCollisionCategory = AIR_HAZARDS.includes(o.type.id) ? 'air' : 'ground';
                             takeDamage();
                             break; // Stop substeps after hit
                         }
@@ -3843,9 +3977,40 @@
         // Journey framing v2 - Reflective, gentle game-over messages
         // Focus on progress toward home, not failure or conquest
         // CHANGE (story): home clarity — special message when player reached Home (1900+)
+        // CONTEXTUAL MESSAGES: Subtly reinforce why the run ended (air = hesitation, ground = timing)
+
+        // Air hazard messages - gentle implication of hesitation or late commitment
+        const GAME_OVER_AIR_MESSAGES = [
+            "He waited a beat too long.",
+            "He almost committed.",
+            "A moment's hesitation.",
+            "He lingered in the air.",
+            "The timing slipped away."
+        ];
+
+        // Ground hazard messages - imply misreading or rushing
+        const GAME_OVER_GROUND_MESSAGES = [
+            "He misread the path ahead.",
+            "The ground surprised him.",
+            "He moved before he saw.",
+            "A step out of rhythm.",
+            "The moment passed too quickly."
+        ];
+
         function getGameOverMessage(finalScore) {
             // Final stage threshold (Home) - acknowledge they made it
             if (finalScore >= 1900) return "He made it home today.";
+
+            // Contextual messages based on last collision type (mid-to-late game only)
+            // Early game uses progress-focused messages to avoid frustration
+            if (finalScore >= 200 && lastCollisionCategory) {
+                const messages = lastCollisionCategory === 'air'
+                    ? GAME_OVER_AIR_MESSAGES
+                    : GAME_OVER_GROUND_MESSAGES;
+                return messages[Math.floor(Math.random() * messages.length)];
+            }
+
+            // Progress-focused fallback for early game or unknown collision
             if (finalScore < 50) return "A short walk, but a start.";
             if (finalScore < 200) return "He found his bearings.";
             if (finalScore < 450) return "A little further this time.";
@@ -3982,7 +4147,7 @@
             gameContainer.classList.remove('defeat-cinematic');
             vignetteOverlay.classList.remove('show');
             // Step 2.6 spawn gate accuracy - reset spawn tracking
-            lastAirSpawnTime = 0; lastTallSpawnTime = 0; consecutiveSpawns = 0; lastSpawnedType = null; lastSpawnedCategory = null; patternQueue = [];
+            lastAirSpawnTime = 0; lastTallSpawnTime = 0; consecutiveSpawns = 0; lastSpawnedType = null; lastSpawnedCategory = null; patternQueue = []; pendingBaitAir = null; firstLowAirSpawned = false; lastCollisionCategory = null;
             // Difficulty curve - reset hard hazard tracking
             lastHardHazardTime = 0; lastLoggedTier = null;
             invalidateCandidateCache(); // Step 2.6 spawn gate accuracy
@@ -4016,6 +4181,9 @@
 
                 // Step 2.5 spawn pacing - check for pattern queue opportunity
                 maybeQueuePattern();
+
+                // BAIT PAIR: check if pending bait air should spawn now
+                maybeSpawnBaitAir();
 
                 // Difficulty curve - get current tier for spawn timing
                 const tier = getDifficultyTier(score);
