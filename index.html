@@ -466,13 +466,14 @@
         /* Pre-state: holds obstacle invisible until viewport entry triggers animation (high speed only) */
         .sprite.spawn-pending {
             opacity: 0;
-            transform: translate3d(18px, 0, 0) scale(0.98);
+            transform: translate3d(28px, 0, 0) scale(0.96);
         }
         .sprite.spawning {
-            animation: sprite-spawn 180ms ease-out forwards;
+            /* Priority 3 Difficulty: Extended reveal delays visual certainty, not hitbox */
+            animation: sprite-spawn 260ms ease-out forwards;
         }
         @keyframes sprite-spawn {
-            0% { opacity: 0; transform: translate3d(18px, 0, 0) scale(0.98); }
+            0% { opacity: 0; transform: translate3d(28px, 0, 0) scale(0.96); }
             100% { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
         }
 
@@ -480,10 +481,10 @@
         .sprite.telegraph {
             animation: sprite-telegraph 200ms ease-out;
         }
-        /* Visual pass - telegraph animation with consistent shadow */
+        /* Visual pass - telegraph animation (bob only; shadow inherited from .sprite) */
         @keyframes sprite-telegraph {
-            0%, 100% { transform: translateY(0); filter: drop-shadow(1px 2px 2px rgba(0,0,0,0.35)) drop-shadow(0 0 1px rgba(0,0,0,0.2)); }
-            50% { transform: translateY(-4px); filter: drop-shadow(1px 2px 2px rgba(0,0,0,0.35)) drop-shadow(0 0 8px rgba(255,200,100,0.5)); }
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-4px); }
         }
 
         /* Flying objects polish - per-type idle animations */
@@ -693,6 +694,29 @@
         @media (min-width: 768px) {
             .score-display { font-size: 16px; padding: 10px 20px; }
             .score-display span { font-size: 26px; }
+        }
+
+        /* Priority 3: Developer debug HUD (hidden by default, toggle with D key) */
+        .debug-hud {
+            display: none;
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background: rgba(0,0,0,0.75);
+            color: #0f0;
+            font-family: monospace;
+            font-size: 11px;
+            padding: 8px 10px;
+            border-radius: 4px;
+            z-index: 9999;
+            pointer-events: none;
+            line-height: 1.4;
+        }
+        .debug-hud.show { display: block; }
+        body.high-contrast .debug-hud {
+            background: rgba(0,0,0,0.95);
+            color: #fff;
+            border: 1px solid #fff;
         }
 
         .game-title {
@@ -1260,7 +1284,7 @@
         body.reduce-motion .sprite.telegraph {
             animation: none !important;
             opacity: 1 !important;
-            transform: none !important;
+            transform: translate3d(0, 0, 0) scale(1) !important; /* Explicit end state to prevent snap */
         }
         body.reduce-motion .powerup {
             animation: none !important;
@@ -1648,28 +1672,6 @@
                 opacity: 1;
             }
         }
-        /* MOBILE LAYOUT FIX: 480px breakpoint for better spacing */
-        /* Prevents location-display from overlapping game-title on mid-sized phones */
-        @media (max-width: 480px) {
-            .location-display {
-                top: max(50px, calc(env(safe-area-inset-top) + 42px));
-                padding: 5px 10px;
-                font-size: 10px;
-                gap: 6px;
-            }
-            .location-display .location-name { font-size: 11px; }
-            .location-display .location-progress { font-size: 9px; }
-            .game-title {
-                top: max(82px, calc(env(safe-area-inset-top) + 74px));
-                font-size: 10px;
-                padding: 2px 8px;
-            }
-            .score-display {
-                top: max(104px, calc(env(safe-area-inset-top) + 96px));
-                font-size: 14px;
-                padding: 6px 14px;
-            }
-        }
         /* CHANGE (mobile HUD): 360px refinements for extra small screens */
         /* Keeps same 2-row layout, just tighter spacing */
         @media (max-width: 360px) {
@@ -2003,6 +2005,8 @@
 
     <div class="game-title">Tater's Adventure Through London</div>
     <div class="score-display">Score: <span id="score">0</span></div>
+    <!-- Priority 3: Developer debug HUD (toggle with D key) -->
+    <div class="debug-hud" id="debugHud"></div>
     <!-- Journey framing - Location display -->
     <div class="location-display" id="locationDisplay">
         <span class="location-name" id="locationName">Lost in Hyde Park</span>
@@ -2121,6 +2125,7 @@
                 <div class="settings-keyboard-item"><kbd>Space</kbd> / <kbd>Enter</kbd> - Hold to jump</div>
                 <div class="settings-keyboard-item"><kbd>P</kbd> - Pause</div>
                 <div class="settings-keyboard-item"><kbd>R</kbd> - Restart</div>
+                <div class="settings-keyboard-item"><kbd>D</kbd> - Debug</div>
             </div>
             <button class="overlay-btn secondary" id="helpBtn">How to Play</button>
             <button class="overlay-btn" id="settingsCloseBtn">Close</button>
@@ -2131,7 +2136,7 @@
     <button class="about-btn" id="aboutBtn" aria-label="About">i</button>
 
     <!-- Share polish - Version string -->
-    <div class="version-string">v0.1</div>
+    <div class="version-string" id="versionString"></div>
 
     <script>
         // Debug - lightweight error logging
@@ -2139,8 +2144,47 @@
             console.error('[ERROR]', e.message, 'line:', e.lineno);
         });
 
+        // Priority 1: Single source of truth for version
+        const GAME_VERSION = 'v1.1';
+
         // Debug - set to true to log when pre-run transitions to running
         const DEBUG_START = false;
+
+        // Priority 3: Debug HUD state (toggle with D key)
+        let debugHudVisible = false;
+        let boneBiasLastApplied = false;
+        let lastDebugHudUpdate = 0;
+
+        // Priority 3: Throttled debug HUD update (max 10Hz to avoid perf issues)
+        function updateDebugHud(now) {
+            if (!debugHudVisible) return;
+            if (now - lastDebugHudUpdate < 100) return; // Throttle to 10 FPS
+            lastDebugHudUpdate = now;
+
+            const tier = typeof getDifficultyTier === 'function' ? getDifficultyTier(score) : '?';
+            const mult = getSpawnIntervalMultiplier(score);
+            const spawnDelta = now - lastSpawnTime;
+            const effInterval = baseSpawnInterval * mult;
+
+            document.getElementById('debugHud').innerHTML =
+                `score:${score} tier:${tier}<br>` +
+                `spd:${gameSpeed.toFixed(2)} obs:${obstacles.length} pwr:${powerups.length}<br>` +
+                `spawnΔ:${spawnDelta.toFixed(0)}ms eff:${effInterval.toFixed(0)}ms<br>` +
+                `mult:${mult.toFixed(2)} bias:${boneBiasLastApplied ? '✓' : '-'}`;
+
+            // Reset bias flag after displaying
+            boneBiasLastApplied = false;
+        }
+
+        // Ship safety - localStorage helpers (graceful fallback if storage unavailable)
+        function safeGet(key) {
+            try { return localStorage.getItem(key); }
+            catch { return null; }
+        }
+        function safeSet(key, value) {
+            try { localStorage.setItem(key, String(value)); }
+            catch { /* storage unavailable, continue silently */ }
+        }
 
         // Convenience reference for body
         const body = document.body;
@@ -2230,16 +2274,37 @@
             }
         }
 
-        // Accessibility - Load settings from localStorage
+        // Accessibility - Load settings from localStorage, inferring from OS if not set
         function loadAccessibilitySettings() {
-            const reduceMotion = localStorage.getItem('taterReduceMotion') === 'true';
-            const highContrast = localStorage.getItem('taterHighContrast') === 'true';
+            // Check if keys exist in localStorage
+            const storedReduceMotion = safeGet('taterReduceMotion');
+            const storedHighContrast = safeGet('taterHighContrast');
+
+            // Infer from OS settings if localStorage key is missing (null)
+            let reduceMotion, highContrast;
+
+            if (storedReduceMotion === null) {
+                // Infer from OS: prefers-reduced-motion: reduce
+                reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+                safeSet('taterReduceMotion', reduceMotion.toString());
+            } else {
+                reduceMotion = storedReduceMotion === 'true';
+            }
+
+            if (storedHighContrast === null) {
+                // Infer from OS: prefers-contrast: more OR forced-colors: active
+                highContrast = window.matchMedia('(prefers-contrast: more)').matches ||
+                               window.matchMedia('(forced-colors: active)').matches;
+                safeSet('taterHighContrast', highContrast.toString());
+            } else {
+                highContrast = storedHighContrast === 'true';
+            }
 
             reduceMotionToggle.checked = reduceMotion;
             highContrastToggle.checked = highContrast;
 
-            if (reduceMotion) body.classList.add('reduce-motion');
-            if (highContrast) body.classList.add('high-contrast');
+            body.classList.toggle('reduce-motion', reduceMotion);
+            body.classList.toggle('high-contrast', highContrast);
         }
 
         // Accessibility - Helper to refresh sprite animations when Reduce Motion toggles mid-run
@@ -2262,7 +2327,7 @@
         // Accessibility - Toggle handlers
         reduceMotionToggle.addEventListener('change', () => {
             const enabled = reduceMotionToggle.checked;
-            localStorage.setItem('taterReduceMotion', enabled);
+            safeSet('taterReduceMotion', enabled);
             body.classList.toggle('reduce-motion', enabled);
             // Refresh existing sprite animations to apply/remove reduce-motion styles
             refreshSpriteAnimations();
@@ -2270,7 +2335,7 @@
 
         highContrastToggle.addEventListener('change', () => {
             const enabled = highContrastToggle.checked;
-            localStorage.setItem('taterHighContrast', enabled);
+            safeSet('taterHighContrast', enabled);
             body.classList.toggle('high-contrast', enabled);
         });
 
@@ -2278,12 +2343,12 @@
         loadAccessibilitySettings();
 
         // Step 4 tutorial - check if tutorial has been seen
-        let tutorialActive = localStorage.getItem('taterTutorialSeen') !== 'true';
+        let tutorialActive = safeGet('taterTutorialSeen') !== 'true';
 
         // Onboarding - toast system state
         let toastTimeout = null;
-        let toastShownJump = localStorage.getItem('taterToastJump') === 'true';
-        let toastShownBone = localStorage.getItem('taterToastBone') === 'true';
+        let toastShownJump = safeGet('taterToastJump') === 'true';
+        let toastShownBone = safeGet('taterToastBone') === 'true';
 
         // Onboarding - check if any overlay is currently visible
         function isAnyOverlayVisible() {
@@ -2423,7 +2488,7 @@
 
         // Step 3 sound - WebAudio system
         let audioCtx = null;
-        let isMuted = localStorage.getItem('taterMuted') === 'true';
+        let isMuted = safeGet('taterMuted') === 'true';
         // Mobile UI - initialize mute button with both icon and label spans
         const initMuteIcon = isMuted ? '🔇' : '🔊';
         muteBtn.innerHTML = `<span class="btn-icon">${initMuteIcon}</span><span class="btn-label">${initMuteIcon}</span>`;
@@ -2522,7 +2587,7 @@
 
         function toggleMute() {
             isMuted = !isMuted;
-            localStorage.setItem('taterMuted', isMuted);
+            safeSet('taterMuted', isMuted);
             // Mobile UI - update both icon and label spans
             const icon = isMuted ? '🔇' : '🔊';
             muteBtn.innerHTML = `<span class="btn-icon">${icon}</span><span class="btn-label">${icon}</span>`;
@@ -2549,7 +2614,6 @@
         let isHolding = false, jumpPower = 0, velocity = 0, taterY = 0;
         let obstacles = [], powerups = [], lastSpawnTime = 0, lastPowerupTime = 0;
         let gameSpeed = 1, invulnerable = false, baseY = 9;
-        let lastCollisionCategory = null; // Track air/ground for contextual game-over messages
         // Visual hierarchy & pacing - Part B: Pre-run state
 
         // ========================================================================
@@ -2747,7 +2811,7 @@
         // No emoji, no hype; reflective and warm tone
         function updateGameOverJourney(finalScore) {
             const currentLocation = getLocationFromScore(finalScore);
-            const bestScore = parseInt(localStorage.getItem('taterBestScore') || '0', 10);
+            const bestScore = parseInt(safeGet('taterBestScore') || '0', 10);
             const bestLocation = getLocationFromScore(bestScore);
             const isNewBest = finalScore > bestScore;
 
@@ -2773,7 +2837,6 @@
         let lastSpawnedCategory = null; // Step 2.5 spawn pacing - track ground/air category
         let patternQueue = [];          // Step 2.5 spawn pacing - queued pattern obstacles
         let lastTallSpawnFrame = 0;     // Anti-cluster: tracks frame when tall hazard spawned
-        let pendingBaitAir = null;      // BAIT PAIR: scheduled air hazard after ground spawn
 
         // Gameplay polish - DEBUG flag for spawn decision logging
         const DEBUG = false;
@@ -2785,7 +2848,7 @@
 
         // Step 2.5 spawn pacing - categorization constants
         // ROSTER UPDATE: removed firework/hairdryer, added umbrella/frisbee, moved pigeon to air
-        const AIR_HAZARDS = ['thunder', 'balloon', 'umbrella', 'frisbee', 'pigeon']; // groundY >= 11 (frisbee lowest)
+        const AIR_HAZARDS = ['thunder', 'balloon', 'umbrella', 'frisbee', 'pigeon']; // groundY >= 12
         const GROUND_HAZARDS = ['mailman', 'vacuum', 'cat', 'cone', 'vet', 'squirrel', 'skateboard'];
         const TALL_HAZARDS = ['mailman', 'vet', 'cone', 'vacuum']; // height 50+ or width 60+
         const SMALL_HAZARDS = ['cat', 'squirrel', 'skateboard'];
@@ -2808,23 +2871,6 @@
         const BREATHER_DELAY = 1000;     // Extra delay ms for breather
         const PATTERN_SCORE_INTERVAL = 150; // Trigger pattern every N score points
 
-        // BAIT PAIR SYSTEM - Decision-hard pattern: punish hesitation (holding jump), not timing
-        // After ground hazard, sometimes queue a low air hazard that catches long jumps
-        const BAIT_PAIR_MIN_SCORE = 800;      // Don't enable until player is experienced
-        const BAIT_PAIR_FULL_SCORE = 1400;    // Full frequency at this score
-        const BAIT_PAIR_MIN_CHANCE = 0.08;    // 8% chance at BAIT_PAIR_MIN_SCORE
-        const BAIT_PAIR_MAX_CHANCE = 0.28;    // 28% chance at BAIT_PAIR_FULL_SCORE and beyond
-        const BAIT_PAIR_SPACING_PX = 320;     // FAIRNESS FIX: Min distance between ground and air hazard
-        const BAIT_AIR_HAZARDS = ['frisbee', 'balloon']; // Low air hazards that catch held jumps
-
-        // TEACHING SEQUENCE - Early-game clarity through spacing
-        // First low-air-hazard gets extra spacing so player learns "this requires a jump"
-        // First bait pair gets extra spacing so player learns "short hop, don't hold"
-        const FIRST_LOW_AIR_EXTRA_SPACING = 80;   // Extra px for first frisbee/balloon
-        const BAIT_PAIR_EARLY_SPACING_PX = 380;   // Wider spacing for first bait pairs (very readable)
-        const BAIT_PAIR_SPACING_TIGHTEN_SCORE = 1100; // Score at which bait spacing reaches normal
-        let firstLowAirSpawned = false;           // Track if first frisbee/balloon has appeared
-
         // ============================================================
         // DIFFICULTY CURVE SYSTEM - 3-Act emotional arc
         // Early: calm, learnable, forgiving
@@ -2844,31 +2890,31 @@
         const RAMP_SCORE_END = 1200;     // Score where speed approaches max (asymptotic)
 
         // Difficulty tier thresholds - TUNED for earlier MID tension
-        const TIER_EARLY_END = 120;      // End of early/calm phase (was 150, now earlier MID entry)
+                const TIER_EARLY_END = 220;      // End of early/calm phase
         const TIER_MID_END = 750;        // End of mid/tension phase (was 600, extended MID duration)
 
         // Tier-based spawn timing (ms) - TUNED for tenser MID
         const SPAWN_DELAY_EARLY = { base: 2800, min: 2000 };  // Unchanged - keep EARLY calm
-        const SPAWN_DELAY_MID = { base: 1900, min: 1250 };    // Tighter (was 2200/1500)
-        const SPAWN_DELAY_LATE = { base: 1500, min: 1000 };   // Slightly tighter (was 1600/1100)
+                const SPAWN_DELAY_MID = { base: 2200, min: 1500 };    // Mid pacing
+                const SPAWN_DELAY_LATE = { base: 1600, min: 1100 };   // Late pacing
 
         // Tier-based spacing multipliers (applied to base spacing) - TUNED for tenser MID
         const SPACING_MULT_EARLY = 1.3;  // 30% more spacing in early game - unchanged
-        const SPACING_MULT_MID = 0.85;   // 15% tighter spacing in mid game (was 1.0)
-        const SPACING_MULT_LATE = 0.85;  // Same as MID floor (was 0.9)
+                const SPACING_MULT_MID = 1.0;   // Mid spacing
+                const SPACING_MULT_LATE = 0.9;  // Late spacing
 
         // Tier-based minimum survivable gap (absolute floor) - PRESERVED for fairness
         const MIN_SURVIVABLE_GAP_EARLY = 280;  // Unchanged - safety first
-        const MIN_SURVIVABLE_GAP_MID = 230;    // Slightly tighter (was 240) but still fair
+                const MIN_SURVIVABLE_GAP_MID = 240;    // Mid survivable floor
         const MIN_SURVIVABLE_GAP_LATE = 200;   // Unchanged - absolute floor
 
         // Tier-based hazard probabilities - TUNED for more "hard moments" in MID
         const AIR_HAZARD_CHANCE_EARLY = 0.15;   // 15% chance - unchanged
-        const AIR_HAZARD_CHANCE_MID = 0.38;     // 38% chance (was 0.28) - more air hazards
-        const AIR_HAZARD_CHANCE_LATE = 0.42;    // 42% chance (was 0.38)
+                const AIR_HAZARD_CHANCE_MID = 0.28;     // Mid air hazard chance
+                const AIR_HAZARD_CHANCE_LATE = 0.38;    // Late air hazard chance
         const TALL_HAZARD_CHANCE_EARLY = 0.20;  // 20% chance - unchanged
-        const TALL_HAZARD_CHANCE_MID = 0.42;    // 42% chance (was 0.35) - more tall hazards
-        const TALL_HAZARD_CHANCE_LATE = 0.48;   // 48% chance (was 0.45)
+                const TALL_HAZARD_CHANCE_MID = 0.35;    // Mid tall hazard chance
+                const TALL_HAZARD_CHANCE_LATE = 0.42;   // Late tall hazard chance
 
         // Post-hard-hazard breather settings
         const POST_HARD_BREATHER_DELAY = 400;   // Extra ms delay after tall/air hazard
@@ -3011,8 +3057,8 @@
             { id: 'umbrella', width: 55, height: 55, groundY: 25,
                 svg: `<svg viewBox="0 0 55 55"><path d="M 27 8 Q 5 12 5 28 Q 5 32 10 32 Q 12 28 15 28 Q 18 28 20 32 Q 22 28 27 28 Q 32 28 34 32 Q 36 28 39 28 Q 42 28 44 32 Q 49 32 49 28 Q 49 12 27 8 Z" fill="#CC2020" stroke="#8A1010" stroke-width="1.5"/><ellipse cx="27" cy="10" rx="8" ry="3" fill="#DD3030"/><line x1="27" y1="8" x2="27" y2="48" stroke="#6B3510" stroke-width="3"/><path d="M 27 48 Q 22 52 20 48" stroke="#6B3510" stroke-width="3" fill="none" stroke-linecap="round"/></svg>` },
             // Visual pass: Frisbee with stronger outline
-            // FINAL: groundY 7 — reliably hits standing Tater, still reads as airborne
-            { id: 'frisbee', width: 50, height: 24, groundY: 7,
+            // CHANGE: Lowered groundY from 20 to 17 (~12px lower) so it hits non-jumping Tater
+            { id: 'frisbee', width: 50, height: 24, groundY: 17,
                 svg: `<svg viewBox="0 0 50 24"><ellipse cx="25" cy="12" rx="24" ry="11" fill="#3498DB" stroke="#1A6090" stroke-width="1.5"/><ellipse cx="25" cy="10" rx="20" ry="8" fill="#5DADE2"/><ellipse cx="25" cy="9" rx="14" ry="5" fill="#85C1E9"/><ellipse cx="25" cy="14" rx="22" ry="9" fill="none" stroke="#2980B9" stroke-width="2"/><ellipse cx="20" cy="8" rx="5" ry="2.5" fill="rgba(255,255,255,0.35)"/></svg>` }
         ];
 
@@ -3204,13 +3250,6 @@
 
             if (lastIsAir || nextIsAir) spacing += AIR_EXTRA_SPACING;
             if (lastIsTall || nextIsTall) spacing += TALL_EXTRA_SPACING;
-
-            // TEACHING SEQUENCE: First low-air-hazard gets extra spacing for clarity
-            // Player learns "this requires a jump" with generous reaction time
-            const nextIsLowAir = nextType && BAIT_AIR_HAZARDS.includes(nextType.id);
-            if (nextIsLowAir && !firstLowAirSpawned) {
-                spacing += FIRST_LOW_AIR_EXTRA_SPACING;
-            }
 
             // Difficulty curve - apply tier-based spacing multiplier
             spacing *= getSpacingMultiplier(tier);
@@ -3437,80 +3476,6 @@
             }
         }
 
-        // BAIT PAIR SYSTEM - Calculate spawn chance based on score (ramps 800→1400)
-        function getBaitPairChance() {
-            if (score < BAIT_PAIR_MIN_SCORE) return 0;
-            if (score >= BAIT_PAIR_FULL_SCORE) return BAIT_PAIR_MAX_CHANCE;
-            // Linear ramp between min and max
-            const progress = (score - BAIT_PAIR_MIN_SCORE) / (BAIT_PAIR_FULL_SCORE - BAIT_PAIR_MIN_SCORE);
-            return BAIT_PAIR_MIN_CHANCE + progress * (BAIT_PAIR_MAX_CHANCE - BAIT_PAIR_MIN_CHANCE);
-        }
-
-        // BAIT PAIR SYSTEM - Calculate progressive spacing (wider early, tightens over time)
-        // TEACHING SEQUENCE: First bait pairs are more readable, spacing tightens as player learns
-        function getBaitPairSpacing() {
-            if (score <= BAIT_PAIR_MIN_SCORE) return BAIT_PAIR_EARLY_SPACING_PX;
-            if (score >= BAIT_PAIR_SPACING_TIGHTEN_SCORE) return BAIT_PAIR_SPACING_PX;
-            // Linear interpolation from early (240px) to normal (180px)
-            const progress = (score - BAIT_PAIR_MIN_SCORE) / (BAIT_PAIR_SPACING_TIGHTEN_SCORE - BAIT_PAIR_MIN_SCORE);
-            return BAIT_PAIR_EARLY_SPACING_PX - progress * (BAIT_PAIR_EARLY_SPACING_PX - BAIT_PAIR_SPACING_PX);
-        }
-
-        // BAIT PAIR SYSTEM - Maybe schedule bait air after ground spawn
-        // Called when a ground hazard is spawned; may set pendingBaitAir
-        function maybeScheduleBaitPair(groundObstacle) {
-            // Don't stack: skip if pattern queue active or bait already pending
-            if (patternQueue.length > 0 || pendingBaitAir !== null) return;
-
-            // Roll for bait pair
-            if (Math.random() >= getBaitPairChance()) return;
-
-            // Choose a low air hazard (frisbee or balloon)
-            const baitType = BAIT_AIR_HAZARDS[Math.floor(Math.random() * BAIT_AIR_HAZARDS.length)];
-
-            // TEACHING SEQUENCE: Use progressive spacing (wider at first, normal later)
-            const spacing = getBaitPairSpacing();
-
-            // Schedule: spawn when ground obstacle has moved spacing into view
-            // This means the air hazard spawns at spawnX when ground is at (spawnX - spacing)
-            // Using x-coordinate trigger ensures spacing is exact regardless of frame timing
-            pendingBaitAir = {
-                type: baitType,
-                triggerWhenGroundAt: window.innerWidth - spacing,
-                groundObstacle: groundObstacle
-            };
-        }
-
-        // BAIT PAIR SYSTEM - Check if pending bait should spawn now
-        // Called each frame; spawns air hazard when ground obstacle reaches trigger position
-        function maybeSpawnBaitAir() {
-            if (!pendingBaitAir) return;
-
-            const ground = pendingBaitAir.groundObstacle;
-            // Check if ground obstacle has moved far enough (or been removed)
-            if (!ground.element.parentNode || ground.x <= pendingBaitAir.triggerWhenGroundAt) {
-                // FAIRNESS CHECK: Skip bait if it would cluster with recent obstacles
-                const baitTypeId = pendingBaitAir.type;
-                const baitType = scaryThings.find(t => t.id === baitTypeId);
-
-                if (baitType) {
-                    // Check if spawn would violate minimum spacing with rightmost obstacle
-                    const rightmostX = getRightmostObstacleX();
-                    const spawnX = window.innerWidth + 80;
-                    const minRequired = getMinSpacingPx(
-                        obstacles.length > 0 ? obstacles[obstacles.length - 1].type : null,
-                        baitType
-                    );
-
-                    // Only spawn if there's enough space; otherwise skip (don't force unfair pair)
-                    if (spawnX - rightmostX >= minRequired) {
-                        spawnObstacle(baitType);
-                    }
-                }
-                pendingBaitAir = null;
-            }
-        }
-
         // Step 2.6 spawn gate accuracy - Consume pattern queue item (only call when actually spawning)
         function consumePatternQueueItem() {
             if (patternQueue.length > 0) {
@@ -3534,10 +3499,6 @@
             if (AIR_HAZARDS.includes(t.id)) {
                 lastAirSpawnTime = now;
                 lastSpawnedCategory = 'air';
-                // TEACHING SEQUENCE: Mark first low-air-hazard as seen
-                if (BAIT_AIR_HAZARDS.includes(t.id) && !firstLowAirSpawned) {
-                    firstLowAirSpawned = true;
-                }
             } else {
                 lastSpawnedCategory = 'ground';
             }
@@ -3566,7 +3527,8 @@
             o.appendChild(sprite);
 
             // CHANGE (visual): use transform for smoother movement - set right:0 as anchor
-            o.style.cssText = `width:${t.width}px;height:${t.height}px;right:0;bottom:${t.groundY}%;will-change:transform`;
+            // Set initial transform immediately to prevent one-frame flash at wrong position
+            o.style.cssText = `width:${t.width}px;height:${t.height}px;right:0;bottom:${t.groundY}%;will-change:transform;transform:translate3d(80px,0,0)`;
             obstaclesContainer.appendChild(o);
 
             // CHANGE (spawn-ease): Determine eligibility for viewport-entry easing (high speed only)
@@ -3579,7 +3541,7 @@
                 sprite.classList.add('spawn-pending');
             }
 
-            const obstacleObj = {
+            obstacles.push({
                 element: o,
                 x: window.innerWidth + 80,
                 type: t,
@@ -3588,13 +3550,7 @@
                 _spawnEaseEligible: spawnEaseEligible,
                 _spawnEaseDone: false,
                 _idleClass: idleClass
-            };
-            obstacles.push(obstacleObj);
-
-            // BAIT PAIR: If this is a ground hazard, maybe schedule a follow-up air hazard
-            if (GROUND_HAZARDS.includes(t.id)) {
-                maybeScheduleBaitPair(obstacleObj);
-            }
+            });
 
             // Step 2.6 spawn gate accuracy - invalidate cache after spawning
             invalidateCandidateCache();
@@ -3656,9 +3612,58 @@
             return { chance: 0.30, cooldownMult: 1.80 };
         }
 
+        // Priority 3 Difficulty Lever 1: Spawn interval multiplier
+        // Increases spawn frequency mid-to-late run without changing spacing gates.
+        // canSpawnObstacle() remains authoritative for survivable gaps—this only
+        // reduces the TIME between spawn attempts, adding decision pressure
+        // without demanding faster reactions.
+        function getSpawnIntervalMultiplier(currentScore) {
+            if (currentScore < 400) return 1.0;           // Early calm preserved
+            if (currentScore < 900) {
+                // Linear ramp: 1.0 at 400 → 0.92 at 900
+                const t = (currentScore - 400) / 500;
+                return 1.0 - (t * 0.08);
+            }
+            return 0.88;                                   // Cap at 12% more frequent
+        }
+
         // Step 2.7 powerup safety - find a safe height for bone spawn
+        // Priority 2: "Temptation bias" adds decision pressure without changing obstacle fairness.
+        // After score >= 450, 30% of bones prefer heights that create hesitation:
+        // - Ground hazard coming → bone biased higher (tempts a jump)
+        // - Air hazard coming → bone biased lower (tempts staying grounded)
         function findSafeBoneHeight() {
-            // Try up to 5 random heights to find a safe one
+            const boneSpawnX = window.innerWidth + 200;
+            const safeDistanceAhead = 280; // Same as isBonePositionSafe
+
+            // Safety check: is any obstacle within the danger window?
+            // If so, skip temptation bias entirely to avoid unfair setups
+            const obstacleNearby = obstacles.some(o =>
+                o.x > boneSpawnX - 120 && o.x < boneSpawnX + safeDistanceAhead
+            );
+
+            // Apply temptation bias only after mid-game, with no nearby obstacles, 30% of the time
+            const applyBias = score >= 450 && !obstacleNearby && Math.random() < 0.30;
+
+            if (applyBias) {
+                const nextCandidate = getNextObstacleCandidate();
+                if (nextCandidate) {
+                    const isAirHazard = AIR_HAZARDS.includes(nextCandidate.id);
+                    // Bias order: air hazard → prefer low; ground hazard → prefer high
+                    const biasedOrder = isAirHazard
+                        ? [18, 25, 32]  // Low first (stay grounded temptation)
+                        : [32, 25, 18]; // High first (jump temptation)
+
+                    for (const height of biasedOrder) {
+                        if (isBonePositionSafe(height)) {
+                            boneBiasLastApplied = true; // Debug HUD tracking
+                            return height;
+                        }
+                    }
+                }
+            }
+
+            // Default: random safe selection (70% of time, or fallback)
             for (let attempt = 0; attempt < 5; attempt++) {
                 const candidateHeight = BONE_HEIGHTS[Math.floor(Math.random() * BONE_HEIGHTS.length)];
                 if (isBonePositionSafe(candidateHeight)) {
@@ -3691,7 +3696,8 @@
             p.appendChild(sprite);
 
             // CHANGE (visual): use transform for smoother movement - set right:0 as anchor
-            p.style.cssText = `width:45px;height:26px;right:0;bottom:${chosenHeight}%;will-change:transform`;
+            // Set initial transform immediately to prevent one-frame flash at wrong position
+            p.style.cssText = `width:45px;height:26px;right:0;bottom:${chosenHeight}%;will-change:transform;transform:translate3d(200px,0,0)`;
             obstaclesContainer.appendChild(p);
 
             powerups.push({ element: p, x: window.innerWidth + 200, collected: false, height: chosenHeight });
@@ -3737,8 +3743,6 @@
                         const or = o.element.getBoundingClientRect();
                         if (hb.left < or.right - 8 && hb.right > or.left + 8 && hb.top < or.bottom - 8 && hb.bottom > or.top + 8) {
                             o.hit = true;
-                            // Track collision type for contextual game-over messages
-                            lastCollisionCategory = AIR_HAZARDS.includes(o.type.id) ? 'air' : 'ground';
                             takeDamage();
                             break; // Stop substeps after hit
                         }
@@ -3834,7 +3838,7 @@
             // Onboarding - show first bone collected toast
             if (!toastShownBone) {
                 toastShownBone = true;
-                localStorage.setItem('taterToastBone', 'true');
+                safeSet('taterToastBone', 'true');
                 setTimeout(() => showToast('Bones heal you 🦴', 2000), 300);
             }
 
@@ -3918,7 +3922,7 @@
                 // Onboarding - show first jump toast (delayed to not interrupt)
                 if (!toastShownJump) {
                     toastShownJump = true;
-                    localStorage.setItem('taterToastJump', 'true');
+                    safeSet('taterToastJump', 'true');
                     setTimeout(() => showToast('Nice! Hold longer to jump higher', 2500), 800);
                 }
             } else {
@@ -3977,40 +3981,9 @@
         // Journey framing v2 - Reflective, gentle game-over messages
         // Focus on progress toward home, not failure or conquest
         // CHANGE (story): home clarity — special message when player reached Home (1900+)
-        // CONTEXTUAL MESSAGES: Subtly reinforce why the run ended (air = hesitation, ground = timing)
-
-        // Air hazard messages - gentle implication of hesitation or late commitment
-        const GAME_OVER_AIR_MESSAGES = [
-            "He waited a beat too long.",
-            "He almost committed.",
-            "A moment's hesitation.",
-            "He lingered in the air.",
-            "The timing slipped away."
-        ];
-
-        // Ground hazard messages - imply misreading or rushing
-        const GAME_OVER_GROUND_MESSAGES = [
-            "He misread the path ahead.",
-            "The ground surprised him.",
-            "He moved before he saw.",
-            "A step out of rhythm.",
-            "The moment passed too quickly."
-        ];
-
         function getGameOverMessage(finalScore) {
             // Final stage threshold (Home) - acknowledge they made it
             if (finalScore >= 1900) return "He made it home today.";
-
-            // Contextual messages based on last collision type (mid-to-late game only)
-            // Early game uses progress-focused messages to avoid frustration
-            if (finalScore >= 200 && lastCollisionCategory) {
-                const messages = lastCollisionCategory === 'air'
-                    ? GAME_OVER_AIR_MESSAGES
-                    : GAME_OVER_GROUND_MESSAGES;
-                return messages[Math.floor(Math.random() * messages.length)];
-            }
-
-            // Progress-focused fallback for early game or unknown collision
             if (finalScore < 50) return "A short walk, but a start.";
             if (finalScore < 200) return "He found his bearings.";
             if (finalScore < 450) return "A little further this time.";
@@ -4022,10 +3995,10 @@
         // Game-over polish - Part D: Best score management
         // Journey framing - simplified to just manage localStorage (UI handled by updateGameOverJourney)
         function updateBestScore(currentScore) {
-            const storedBest = parseInt(localStorage.getItem('taterBestScore') || '0', 10);
+            const storedBest = parseInt(safeGet('taterBestScore') || '0', 10);
             const isNewBest = currentScore > storedBest;
             if (isNewBest) {
-                localStorage.setItem('taterBestScore', currentScore.toString());
+                safeSet('taterBestScore', currentScore.toString());
             }
             return isNewBest;
         }
@@ -4079,6 +4052,19 @@
         // Mobile UI - updated to preserve icon/label spans
         // Visual hierarchy & pacing - Part A: toggle playing class when pausing
         function togglePause() { if (isGameOver || preRunState) return; isPaused = !isPaused; pauseOverlay.classList.toggle('show', isPaused); pauseAnimations(isPaused); body.classList.toggle('playing', !isPaused); const pauseBtn = document.getElementById('pauseBtn'); const icon = isPaused ? '▶' : '⏸'; const label = isPaused ? 'Resume' : 'Pause'; pauseBtn.innerHTML = `<span class="btn-icon">${icon}</span><span class="btn-label">${label}</span>`; }
+
+        // Auto-pause on focus loss - only pause, never auto-resume
+        function forcePause() {
+            // Only act if game is actively playing
+            if (isGameOver || preRunState || tutorialActive || isPaused) return;
+            isPaused = true;
+            pauseOverlay.classList.add('show');
+            pauseAnimations(true);
+            body.classList.remove('playing');
+            const pauseBtn = document.getElementById('pauseBtn');
+            pauseBtn.innerHTML = `<span class="btn-icon">▶</span><span class="btn-label">Resume</span>`;
+        }
+
         // Visual hierarchy & pacing - Part B: also check preRunState before adding running class
         function pauseAnimations(p) { document.querySelectorAll('.clouds,.landmarks-far,.landmarks-mid,.park-elements,.path').forEach(e => e.classList.toggle('paused', p)); if (p) { tater.classList.remove('running'); pauseAmbientRamp(); } else { if (!isJumping && !isGameOver && !preRunState) tater.classList.add('running'); resumeAmbientRamp(); } }
 
@@ -4098,7 +4084,7 @@
         function dismissTutorial() {
             const wasFirstRunTutorial = tutorialActive; // True only on first-run, false for Help reopen
             tutorialActive = false;
-            localStorage.setItem('taterTutorialSeen', 'true');
+            safeSet('taterTutorialSeen', 'true');
             tutorialOverlay.classList.remove('show');
 
             // Determine if we should unpause
@@ -4147,7 +4133,7 @@
             gameContainer.classList.remove('defeat-cinematic');
             vignetteOverlay.classList.remove('show');
             // Step 2.6 spawn gate accuracy - reset spawn tracking
-            lastAirSpawnTime = 0; lastTallSpawnTime = 0; consecutiveSpawns = 0; lastSpawnedType = null; lastSpawnedCategory = null; patternQueue = []; pendingBaitAir = null; firstLowAirSpawned = false; lastCollisionCategory = null;
+            lastAirSpawnTime = 0; lastTallSpawnTime = 0; consecutiveSpawns = 0; lastSpawnedType = null; lastSpawnedCategory = null; patternQueue = [];
             // Difficulty curve - reset hard hazard tracking
             lastHardHazardTime = 0; lastLoggedTier = null;
             invalidateCandidateCache(); // Step 2.6 spawn gate accuracy
@@ -4181,9 +4167,6 @@
 
                 // Step 2.5 spawn pacing - check for pattern queue opportunity
                 maybeQueuePattern();
-
-                // BAIT PAIR: check if pending bait air should spawn now
-                maybeSpawnBaitAir();
 
                 // Difficulty curve - get current tier for spawn timing
                 const tier = getDifficultyTier(score);
@@ -4222,13 +4205,16 @@
                 // Step 2.6 spawn gate accuracy - use actual candidate type for spacing gate
                 const canSpawn = canSpawnObstacle(nextCandidate);
 
+                // Priority 3 Difficulty Lever 1: apply spawn interval multiplier
+                const effectiveSpawnInterval = baseSpawnInterval * getSpawnIntervalMultiplier(score);
+
                 // Difficulty curve - debug logging
-                if (DEBUG_DIFFICULTY && canSpawn && now - lastSpawnTime > baseSpawnInterval) {
+                if (DEBUG_DIFFICULTY && canSpawn && now - lastSpawnTime > effectiveSpawnInterval) {
                     const minSpacing = nextCandidate ? getMinSpacingPx(obstacles.length > 0 ? obstacles[obstacles.length - 1].type : null, nextCandidate) : 0;
-                    logDifficulty(tier, gameSpeed, minSpacing, baseSpawnInterval, postHardBreather ? ' [post-hard breather]' : '');
+                    logDifficulty(tier, gameSpeed, minSpacing, effectiveSpawnInterval, postHardBreather ? ' [post-hard breather]' : '');
                 }
 
-                if (now - lastSpawnTime > baseSpawnInterval && canSpawn) {
+                if (now - lastSpawnTime > effectiveSpawnInterval && canSpawn) {
                     // Difficulty curve - track hard hazard spawns for breather logic
                     if (nextCandidate && isHardHazard(nextCandidate)) {
                         lastHardHazardTime = now;
@@ -4264,6 +4250,10 @@
                 // Difficulty curve - smooth 3-act speed progression
                 gameSpeed = calculateGameSpeed(score);
             }
+
+            // Priority 3: Update debug HUD (throttled, no gameplay impact)
+            updateDebugHud(now);
+
             requestAnimationFrame(gameLoop);
         }
 
@@ -4385,6 +4375,11 @@
                 hideSettings();
                 if (isPaused && !isGameOver) togglePause();
             }
+            // D: toggle debug HUD (developer only)
+            if (e.code === 'KeyD') {
+                debugHudVisible = !debugHudVisible;
+                document.getElementById('debugHud').classList.toggle('show', debugHudVisible);
+            }
         });
 
         document.addEventListener('keyup', e => {
@@ -4398,9 +4393,16 @@
         body.addEventListener('contextmenu', e => e.preventDefault());
         body.addEventListener('touchmove', e => e.preventDefault(), { passive: false });
 
+        // Auto-pause on focus loss / tab hidden
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) forcePause();
+        });
+        window.addEventListener('blur', () => forcePause());
+
         // Step 4 tutorial - show tutorial on first run, then start game loop
         // Visual hierarchy & pacing - Part B: Show start prompt if no tutorial
         generateBackground(); initLives();
+        document.getElementById('versionString').textContent = GAME_VERSION;
         if (!tutorialActive) {
             startPrompt.classList.add('show');
         }
