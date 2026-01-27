@@ -1800,14 +1800,7 @@
         body.reduce-motion .game-container.shake {
             animation: none !important;
         }
-        /* Mobile-only adjustment: lift Tater to avoid thumb occlusion */
-        /* Only apply during active play (body.playing) so pre-run state uses default bottom */
-@media (max-width: 520px) {
-  body.playing .tater-container {
-    left: 6%;
-    bottom: 18%;
-  }
-}
+        /* Mobile UX: gameplay band lift is now handled in JS via getMobileBaselineOffset() */
 
     </style>
 </head>
@@ -2613,7 +2606,20 @@
         let score = 0, lives = MAX_LIVES, isPaused = false, isGameOver = false, isJumping = false; // uses MAX_LIVES
         let isHolding = false, jumpPower = 0, velocity = 0, taterY = 0;
         let obstacles = [], powerups = [], lastSpawnTime = 0, lastPowerupTime = 0;
-        let gameSpeed = 1, invulnerable = false, baseY = 9;
+        let gameSpeed = 1, invulnerable = false;
+
+        // Mobile UX: Compute baseline offset to lift gameplay band on small screens
+        // Desktop/tablet: 0 offset (baseY stays 9%). Mobile ≤520px: +9 offset (baseY becomes 18%)
+        const DESKTOP_BASE_Y = 9;
+        const MOBILE_BASELINE_OFFSET = 9;
+        function getMobileBaselineOffset() {
+            return window.innerWidth <= 520 ? MOBILE_BASELINE_OFFSET : 0;
+        }
+        function getBaseY() {
+            return DESKTOP_BASE_Y + getMobileBaselineOffset();
+        }
+        let baseY = getBaseY(); // Computed on load, updated on resize
+
         // Visual hierarchy & pacing - Part B: Pre-run state
 
         // ========================================================================
@@ -3528,7 +3534,9 @@
 
             // CHANGE (visual): use transform for smoother movement - set right:0 as anchor
             // Set initial transform immediately to prevent one-frame flash at wrong position
-            o.style.cssText = `width:${t.width}px;height:${t.height}px;right:0;bottom:${t.groundY}%;will-change:transform;transform:translate3d(80px,0,0)`;
+            // Mobile UX: Add baseline offset so obstacles lift with the gameplay band
+            const obstacleBottomY = t.groundY + getMobileBaselineOffset();
+            o.style.cssText = `width:${t.width}px;height:${t.height}px;right:0;bottom:${obstacleBottomY}%;will-change:transform;transform:translate3d(80px,0,0)`;
             obstaclesContainer.appendChild(o);
 
             // CHANGE (spawn-ease): Determine eligibility for viewport-entry easing (high speed only)
@@ -3697,7 +3705,9 @@
 
             // CHANGE (visual): use transform for smoother movement - set right:0 as anchor
             // Set initial transform immediately to prevent one-frame flash at wrong position
-            p.style.cssText = `width:45px;height:26px;right:0;bottom:${chosenHeight}%;will-change:transform;transform:translate3d(200px,0,0)`;
+            // Mobile UX: Add baseline offset so bones lift with the gameplay band
+            const boneBottomY = chosenHeight + getMobileBaselineOffset();
+            p.style.cssText = `width:45px;height:26px;right:0;bottom:${boneBottomY}%;will-change:transform;transform:translate3d(200px,0,0)`;
             obstaclesContainer.appendChild(p);
 
             powerups.push({ element: p, x: window.innerWidth + 200, collected: false, height: chosenHeight });
@@ -4431,6 +4441,10 @@
         // Visual hierarchy & pacing - Part B: Show start prompt if no tutorial
         generateBackground(); initLives();
         document.getElementById('versionString').textContent = GAME_VERSION;
+
+        // Mobile UX: Update baseY on resize to handle orientation changes
+        window.addEventListener('resize', () => { baseY = getBaseY(); });
+
         runShipSanityChecks(); // Priority 2: Run sanity checks before game starts
         if (!tutorialActive) {
             startPrompt.classList.add('show');
