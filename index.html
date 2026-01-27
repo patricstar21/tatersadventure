@@ -1645,27 +1645,45 @@
         @media (max-width: 520px) {
             /* Mobile title hierarchy: Title is PRIMARY, below .ui-top with comfortable gap */
             .game-title {
-                top: max(62px, calc(env(safe-area-inset-top) + 54px));
+                top: max(74px, calc(env(safe-area-inset-top) + 66px));
                 font-size: 15px;
                 background: rgba(255,255,255,0.95);
                 padding: 5px 14px;
                 border-radius: 8px;
                 z-index: 502;
             }
-            /* Pre-run: title is prominent and larger */
+            /* Pre-run: title is HERO lockup - prominent, bold, allows wrapping */
             body:not(.playing) .game-title {
                 opacity: 1;
-                font-size: 17px;
+                font-size: clamp(20px, 5.2vw, 28px);
+                font-weight: 900;
+                letter-spacing: 0.2px;
+                max-width: calc(100vw - 24px);
+                white-space: normal;
+                line-height: 1.15;
+                padding: 10px 18px;
+                border: 2px solid rgba(160,128,96,0.55);
+                border-radius: 14px;
+                box-shadow: 0 3px 12px rgba(74,60,40,0.18);
             }
             /* During play: title fades but stays readable */
             body.playing .game-title {
                 opacity: 0.7;
                 font-size: 12px;
+                font-weight: inherit;
+                letter-spacing: normal;
+                max-width: none;
+                white-space: nowrap;
+                line-height: inherit;
+                padding: 5px 14px;
+                border: none;
+                border-radius: 8px;
+                box-shadow: none;
             }
             /* Location bar sits below title with clear gap */
             .location-display {
                 position: fixed;
-                top: max(100px, calc(env(safe-area-inset-top) + 92px));
+                top: max(120px, calc(env(safe-area-inset-top) + 112px));
                 left: max(8px, env(safe-area-inset-left));
                 right: max(8px, env(safe-area-inset-right));
                 max-width: none;
@@ -1694,24 +1712,43 @@
             }
             /* Score below location bar */
             .score-display {
-                top: max(140px, calc(env(safe-area-inset-top) + 132px));
+                top: max(160px, calc(env(safe-area-inset-top) + 152px));
             }
         }
         /* 360px: Same hierarchy (Title > Location > Score), slightly tighter but still comfortable */
         @media (max-width: 360px) {
             .game-title {
-                top: max(58px, calc(env(safe-area-inset-top) + 50px));
+                top: max(68px, calc(env(safe-area-inset-top) + 60px));
                 font-size: 13px;
                 padding: 4px 10px;
             }
+            /* Pre-run: title is HERO lockup - scaled down for smaller screens */
             body:not(.playing) .game-title {
-                font-size: 15px;
+                font-size: clamp(18px, 6vw, 24px);
+                font-weight: 900;
+                letter-spacing: 0.2px;
+                max-width: calc(100vw - 20px);
+                white-space: normal;
+                line-height: 1.15;
+                padding: 8px 14px;
+                border: 2px solid rgba(160,128,96,0.55);
+                border-radius: 12px;
+                box-shadow: 0 2px 10px rgba(74,60,40,0.15);
             }
             body.playing .game-title {
                 font-size: 11px;
+                font-weight: inherit;
+                letter-spacing: normal;
+                max-width: none;
+                white-space: nowrap;
+                line-height: inherit;
+                padding: 4px 10px;
+                border: none;
+                border-radius: 8px;
+                box-shadow: none;
             }
             .location-display {
-                top: max(92px, calc(env(safe-area-inset-top) + 84px));
+                top: max(110px, calc(env(safe-area-inset-top) + 102px));
                 padding: 4px 8px;
                 font-size: 9px;
                 gap: 6px;
@@ -1719,7 +1756,7 @@
             .location-display .location-name { font-size: 10px; }
             .location-display .location-progress { font-size: 8px; }
             .score-display {
-                top: max(126px, calc(env(safe-area-inset-top) + 118px));
+                top: max(144px, calc(env(safe-area-inset-top) + 136px));
                 padding: 4px 10px;
                 font-size: 11px;
             }
@@ -3165,6 +3202,7 @@
 
             // Helper: generate non-adjacent placement indices for variety
             // Returns an array of indices that avoids placing the same SVG type adjacent
+            // Uses random selection (runs only at generation time, not per-frame)
             function generateNonAdjacentIndices(count, svgArrayLength) {
                 const indices = [];
                 let lastIdx = -1;
@@ -3174,12 +3212,28 @@
                     for (let j = 0; j < svgArrayLength; j++) {
                         if (j !== lastIdx) pool.push(j);
                     }
-                    // Pick deterministically based on position for consistency
-                    const pick = pool[i % pool.length];
+                    // Random selection from pool for natural variety
+                    const pick = pool[Math.floor(Math.random() * pool.length)];
                     indices.push(pick);
                     lastIdx = pick;
                 }
                 return indices;
+            }
+
+            // Helper: generate subtle per-element jitter for visual variety
+            // Only called at creation time, not per-frame (safe for performance)
+            function getElementJitter(layer) {
+                const jitter = {
+                    far:  { yRange: 8,  scaleRange: 0.08, opacityRange: 0.08 },
+                    mid:  { yRange: 5,  scaleRange: 0.06, opacityRange: 0.06 },
+                    park: { yRange: 4,  scaleRange: 0.05, opacityRange: 0.05 }
+                };
+                const j = jitter[layer] || jitter.mid;
+                return {
+                    y: (Math.random() - 0.5) * 2 * j.yRange,
+                    scale: 1 + (Math.random() - 0.5) * 2 * j.scaleRange,
+                    opacity: 1 - Math.random() * j.opacityRange
+                };
             }
 
             // FAR LAYER - London skyline with iconic landmarks + terraced roofs with chimneys
@@ -3213,7 +3267,8 @@
             for (let i = 0; i < 8; i++) {
                 const d = document.createElement('div');
                 d.innerHTML = farSVGs[farIndices[i]];
-                d.style.cssText = `position:absolute;left:${x}px;bottom:0`;
+                const j = getElementJitter('far');
+                d.style.cssText = `position:absolute;left:${x}px;bottom:${j.y}px;transform:scale(${j.scale});opacity:${j.opacity}`;
                 far.appendChild(d);
                 x += farBaseWidth / 8;
             }
@@ -3250,7 +3305,8 @@
             for (let i = 0; i < 12; i++) {
                 const d = document.createElement('div');
                 d.innerHTML = midSVGs[midIndices[i]];
-                d.style.cssText = `position:absolute;left:${x}px;bottom:0`;
+                const j = getElementJitter('mid');
+                d.style.cssText = `position:absolute;left:${x}px;bottom:${j.y}px;transform:scale(${j.scale});opacity:${j.opacity}`;
                 mid.appendChild(d);
                 x += midBaseWidth / 12;
             }
@@ -3276,11 +3332,13 @@
                 `<svg width="40" height="40" viewBox="0 0 40 40"><ellipse cx="20" cy="36" rx="18" ry="4" fill="#909090" opacity="0.7"/><rect x="16" y="20" width="8" height="16" fill="#A0A0A0" opacity="0.7"/><ellipse cx="20" cy="20" rx="8" ry="3" fill="#A0A0A0" opacity="0.7"/><ellipse cx="20" cy="12" rx="3" ry="8" fill="#88BBDD" opacity="0.4"/></svg>`
             ];
             const parkBaseWidth = window.innerWidth;
+            const parkIndices = generateNonAdjacentIndices(14, parkSVGs.length);
             x = 0;
             for (let i = 0; i < 14; i++) {
                 const d = document.createElement('div');
-                d.innerHTML = parkSVGs[i % parkSVGs.length];
-                d.style.cssText = `position:absolute;left:${x}px;bottom:0`;
+                d.innerHTML = parkSVGs[parkIndices[i]];
+                const j = getElementJitter('park');
+                d.style.cssText = `position:absolute;left:${x}px;bottom:${j.y}px;transform:scale(${j.scale});opacity:${j.opacity}`;
                 park.appendChild(d);
                 x += parkBaseWidth / 14;
             }
@@ -3713,13 +3771,18 @@
         // reduces the TIME between spawn attempts, adding decision pressure
         // without demanding faster reactions.
         function getSpawnIntervalMultiplier(currentScore) {
-            if (currentScore < 400) return 1.0;           // Early calm preserved
-            if (currentScore < 900) {
-                // Linear ramp: 1.0 at 400 → 0.92 at 900
-                const t = (currentScore - 400) / 500;
-                return 1.0 - (t * 0.08);
+            // Spawn frequency safety clamp: protect early game and set hard floor
+            const EARLY_GAME_CAP = 800;  // No acceleration before this score
+            const HARD_FLOOR = 0.85;     // Never go below 15% faster than base
+
+            if (currentScore < EARLY_GAME_CAP) return 1.0; // Early game: no spawn acceleration
+
+            if (currentScore < 1400) {
+                // Linear ramp: 1.0 at 800 → 0.90 at 1400
+                const t = (currentScore - EARLY_GAME_CAP) / 600;
+                return Math.max(HARD_FLOOR, 1.0 - (t * 0.10));
             }
-            return 0.88;                                   // Cap at 12% more frequent
+            return HARD_FLOOR;                             // Cap at 15% more frequent
         }
 
         // Step 2.7 powerup safety - find a safe height for bone spawn
@@ -3825,6 +3888,10 @@
             const tr = taterContainer.getBoundingClientRect();
             const hb = { left: tr.left + 20, right: tr.right - 15, top: tr.top + 15, bottom: tr.bottom - 12 };
 
+            // Broad-phase proximity threshold: only call getBoundingClientRect when
+            // obstacle is within this distance of Tater (avoids layout thrash on mobile)
+            const proximityThreshold = tr.right + 250;
+
             // Calculate substeps: 1 step if slow, up to MAX_SUBSTEPS if fast
             const numSteps = spd > SUBSTEP_THRESHOLD ? Math.min(MAX_SUBSTEPS, Math.ceil(spd / SUBSTEP_THRESHOLD)) : 1;
             const stepSize = spd / numSteps;
@@ -3834,7 +3901,8 @@
                 for (let step = 0; step < numSteps; step++) {
                     o.x -= stepSize;
                     // Check collision at each substep for accuracy
-                    if (!o.hit && !invulnerable) {
+                    // Broad-phase gate: skip expensive getBoundingClientRect if obstacle is far from Tater
+                    if (!o.hit && !invulnerable && o.x < proximityThreshold) {
                         // Update transform for accurate getBoundingClientRect
                         o.element.style.transform = `translate3d(${o.x - window.innerWidth}px, 0, 0)`;
                         const or = o.element.getBoundingClientRect();
@@ -3888,7 +3956,8 @@
                 for (let step = 0; step < numSteps; step++) {
                     p.x -= stepSize;
                     // Check collision at each substep for accuracy
-                    if (!p.collected) {
+                    // Broad-phase gate: skip expensive getBoundingClientRect if powerup is far from Tater
+                    if (!p.collected && p.x < proximityThreshold) {
                         // Update transform for accurate getBoundingClientRect
                         p.element.style.transform = `translate3d(${p.x - window.innerWidth}px, 0, 0)`;
                         const pr = p.element.getBoundingClientRect();
@@ -4222,6 +4291,13 @@
         }
 
         function resetGame() {
+            // RAF chain hardening: cancel any pending frame and reset loop state
+            if (gameLoopId !== null) {
+                cancelAnimationFrame(gameLoopId);
+                gameLoopId = null;
+            }
+            gameLoopRunning = false;
+
             score = 0; lives = MAX_LIVES; gameSpeed = 1; isGameOver = false; isPaused = false; isJumping = false; isHolding = false; jumpPower = 0; velocity = 0; taterY = 0; invulnerable = false; // uses MAX_LIVES
             hitStopUntil = 0; // Ship-hardening: clear any pending hit-stop
             // Visual hierarchy & pacing - Part B: Reset to pre-run state
@@ -4237,6 +4313,8 @@
             vignetteOverlay.classList.remove('show');
             // Step 2.6 spawn gate accuracy - reset spawn tracking
             lastAirSpawnTime = 0; lastTallSpawnTime = 0; consecutiveSpawns = 0; lastSpawnedType = null; lastSpawnedCategory = null; patternQueue = [];
+            // Ship-hardening: reset spawn timers to prevent desync on restart
+            lastSpawnTime = 0; lastPowerupTime = 0; frameCount = 0; lastTallSpawnFrame = 0;
             // Difficulty curve - reset hard hazard tracking
             lastHardHazardTime = 0; lastLoggedTier = null;
             invalidateCandidateCache(); // Step 2.6 spawn gate accuracy
@@ -4254,13 +4332,17 @@
             shadow.style.transform = 'scale(1)'; shadow.style.opacity = '0.3';
             // Visual hierarchy & pacing - Part B: Tater idle, gentle background movement
             pauseAnimations(false); // Background moves gently during pre-run, Tater stays idle
+
+            // RAF chain hardening: restart the loop after reset
+            startGameLoop();
         }
 
         function gameLoop() {
-            // Ship-hardening: guard against multiple loops
+            // RAF chain hardening: guard against multiple loops
             if (gameLoopRunning) return;
             gameLoopRunning = true;
 
+            try {
             const now = Date.now();
             // Step 3 juice - skip game updates during hit-stop (CSS animations continue)
             const inHitStop = now < hitStopUntil;
@@ -4362,9 +4444,11 @@
             // Priority 3: Update debug HUD (throttled, no gameplay impact)
             updateDebugHud(now);
 
-            // Ship-hardening: store animation frame ID and release guard
-            gameLoopRunning = false;
-            gameLoopId = requestAnimationFrame(gameLoop);
+            } finally {
+                // RAF chain hardening: always release guard and schedule next frame
+                gameLoopRunning = false;
+                gameLoopId = requestAnimationFrame(gameLoop);
+            }
         }
 
         // Ship-hardening: safe game loop starter (prevents double-start)
