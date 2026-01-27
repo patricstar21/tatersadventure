@@ -3975,6 +3975,11 @@
             } else {
                 // On ground - keep tracking grounded time for coyote time
                 lastGroundedTime = now;
+                // Ship fix: Enforce grounded position every frame to prevent visual float on mobile
+                taterY = 0;
+                taterContainer.style.bottom = baseY + '%';
+                shadow.style.transform = 'scale(1)';
+                shadow.style.opacity = 0.3;
             }
         }
 
@@ -4347,48 +4352,54 @@
         // UI polish - Help button in settings
         document.getElementById('helpBtn').addEventListener('click', e => { e.stopPropagation(); showHelp(); });
 
-        // Accessibility - Keyboard support
-        document.addEventListener('keydown', e => {
-            // Ignore if typing in an input
-            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+        // Accessibility - Keyboard support (guarded to prevent duplicate binding)
+        if (window.__taterKeyHandlersBound) {
+            console.warn('[SHIP] Keyboard handlers already bound - skipping duplicate registration');
+        } else {
+            window.__taterKeyHandlersBound = true;
+            document.addEventListener('keydown', e => {
+                // Ignore if typing in an input
+                if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
 
-            // Space or Enter: start jump (hold)
-            if (e.code === 'Space' || e.code === 'Enter') {
-                e.preventDefault();
-                initAudio();
-                startJump();
-            }
-            // P: toggle pause
-            if (e.code === 'KeyP') {
-                e.preventDefault();
-                togglePause();
-            }
-            // R: restart game
-            if (e.code === 'KeyR') {
-                e.preventDefault();
-                resetGame();
-            }
-            // Escape: close any open overlay
-            if (e.code === 'Escape') {
-                e.preventDefault();
-                hideAbout();
-                hideSettings();
-                if (isPaused && !isGameOver) togglePause();
-            }
-            // D: toggle debug HUD (developer only)
-            if (e.code === 'KeyD') {
-                debugHudVisible = !debugHudVisible;
-                document.getElementById('debugHud').classList.toggle('show', debugHudVisible);
-            }
-        });
+                // Space or Enter: start jump (hold)
+                if (e.code === 'Space' || e.code === 'Enter') {
+                    e.preventDefault();
+                    if (e.repeat) return; // Ignore key repeat to prevent charge meter flicker
+                    initAudio();
+                    startJump();
+                }
+                // P: toggle pause
+                if (e.code === 'KeyP') {
+                    e.preventDefault();
+                    togglePause();
+                }
+                // R: restart game
+                if (e.code === 'KeyR') {
+                    e.preventDefault();
+                    resetGame();
+                }
+                // Escape: close any open overlay
+                if (e.code === 'Escape') {
+                    e.preventDefault();
+                    hideAbout();
+                    hideSettings();
+                    if (isPaused && !isGameOver) togglePause();
+                }
+                // D: toggle debug HUD (developer only)
+                if (e.code === 'KeyD') {
+                    debugHudVisible = !debugHudVisible;
+                    document.getElementById('debugHud').classList.toggle('show', debugHudVisible);
+                }
+            });
 
-        document.addEventListener('keyup', e => {
-            // Space or Enter: release jump
-            if (e.code === 'Space' || e.code === 'Enter') {
-                e.preventDefault();
-                releaseJump();
-            }
-        });
+            document.addEventListener('keyup', e => {
+                // Space or Enter: release jump
+                if (e.code === 'Space' || e.code === 'Enter') {
+                    e.preventDefault();
+                    releaseJump();
+                }
+            });
+        }
 
         body.addEventListener('contextmenu', e => e.preventDefault());
         body.addEventListener('touchmove', e => e.preventDefault(), { passive: false });
@@ -4399,10 +4410,28 @@
         });
         window.addEventListener('blur', () => forcePause());
 
+        // Priority 2 (ship safety): Console-only sanity checks for common regressions
+        function runShipSanityChecks() {
+            if (!document.getElementById('versionString')) {
+                console.warn('[SHIP] Missing element: #versionString');
+            }
+            if (!document.getElementById('debugHud')) {
+                console.warn('[SHIP] Missing element: #debugHud');
+            }
+            const versionElements = document.querySelectorAll('.version-string');
+            if (versionElements.length !== 1) {
+                console.warn('[SHIP] Expected exactly 1 .version-string element, found:', versionElements.length);
+            }
+            if (document.documentElement.outerHTML.includes('v0.1')) {
+                console.warn('[SHIP] Hardcoded "v0.1" found in HTML - should use GAME_VERSION constant');
+            }
+        }
+
         // Step 4 tutorial - show tutorial on first run, then start game loop
         // Visual hierarchy & pacing - Part B: Show start prompt if no tutorial
         generateBackground(); initLives();
         document.getElementById('versionString').textContent = GAME_VERSION;
+        runShipSanityChecks(); // Priority 2: Run sanity checks before game starts
         if (!tutorialActive) {
             startPrompt.classList.add('show');
         }
