@@ -2624,6 +2624,29 @@
             return DESKTOP_BASE_Y + getMobileBaselineOffset();
         }
         let baseY = getBaseY(); // Computed on load, updated on resize
+        function applyBaseYToTater(immediate = false) {
+    baseY = getBaseY();
+
+    // Ensure Tater is grounded visually
+    taterY = 0;
+    velocity = 0;
+    isJumping = false;
+
+    if (immediate) {
+        // Prevent a visible “slide” from CSS 9% → JS baseY on initial paint
+        const prev = taterContainer.style.transition;
+        taterContainer.style.transition = 'none';
+        taterContainer.style.bottom = baseY + '%';
+        // force reflow so transition-none takes effect
+        void taterContainer.offsetHeight;
+        taterContainer.style.transition = prev || '';
+    } else {
+        taterContainer.style.bottom = baseY + '%';
+    }
+
+    shadow.style.transform = 'scale(1)';
+    shadow.style.opacity = 0.3;
+}
 
         // Visual hierarchy & pacing - Part B: Pre-run state
 
@@ -4166,7 +4189,8 @@
             pauseOverlay.classList.remove('show'); gameOverOverlay.classList.remove('show');
             // Mobile UI - reset pause button with icon/label spans
             document.getElementById('pauseBtn').innerHTML = '<span class="btn-icon">⏸</span><span class="btn-label">Pause</span>';
-            jumpIndicator.style.height = '0px'; taterContainer.style.bottom = baseY + '%';
+            jumpIndicator.style.height = '0px'; 
+            applyBaseYToTater(true);
             shadow.style.transform = 'scale(1)'; shadow.style.opacity = '0.3';
             // Visual hierarchy & pacing - Part B: Tater idle, gentle background movement
             pauseAnimations(false); // Background moves gently during pre-run, Tater stays idle
@@ -4446,6 +4470,8 @@
         // Visual hierarchy & pacing - Part B: Show start prompt if no tutorial
         generateBackground(); initLives();
         document.getElementById('versionString').textContent = GAME_VERSION;
+
+        applyBaseYToTater(true);
 
         // Mobile UX: Update baseY on resize to handle orientation changes
         window.addEventListener('resize', () => { baseY = getBaseY(); });
