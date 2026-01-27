@@ -148,7 +148,7 @@
 
         .path {
             position: absolute;
-            bottom: 5%;
+            bottom: calc(9% - 4%);
             left: 0;
             width: 200%;
             height: 60px;
@@ -157,6 +157,11 @@
             border-bottom: 3px solid #7A6A5A;
             animation: scroll-path calc(8s / var(--ambient-motion-factor)) linear infinite;
         }
+        @media (max-width: 520px) {
+  .path {
+    bottom: calc(18% - 4%);
+  }
+}
         .path.paused { animation-play-state: paused; }
         @keyframes scroll-path {
             0% { transform: translateX(0); }
