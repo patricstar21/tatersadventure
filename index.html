@@ -133,6 +133,7 @@
             left: 0;
             width: 300%;
             height: 160px;
+            opacity: 0.92;
             animation: scroll-mid calc(100s / var(--ambient-motion-factor)) linear infinite;
         }
         .landmarks-mid.paused { animation-play-state: paused; }
@@ -147,6 +148,7 @@
             left: 0;
             width: 300%;
             height: 130px;
+            opacity: 0.88;
             animation: scroll-park calc(60s / var(--ambient-motion-factor)) linear infinite;
         }
         .park-elements.paused { animation-play-state: paused; }
@@ -3191,8 +3193,8 @@
 
             // CLOUDS - generate for first half, then duplicate
             const cloudBaseWidth = window.innerWidth;
-            const cloudPositions = generateVariedPositions(8, cloudBaseWidth, 60, 120);
-            for (let i = 0; i < 8; i++) {
+            const cloudPositions = generateVariedPositions(6, cloudBaseWidth, 90, 120);
+            for (let i = 0; i < 6; i++) {
                 const c = document.createElement('div');
                 c.className = 'cloud';
                 const j = getElementJitter('cloud');
@@ -3319,8 +3321,8 @@
             for (let i = 0; i < 2; i++) {
                 farIndices.push(nonIconicIndices[Math.floor(Math.random() * nonIconicIndices.length)]);
             }
-            // Fill remaining 6 slots, allowing iconic only once each
-            while (farIndices.length < 8) {
+            // Fill remaining slots (6 total), allowing iconic only once each
+            while (farIndices.length < 6) {
                 const pool = [];
                 // Add all non-iconic (always available)
                 nonIconicIndices.forEach(idx => pool.push(idx));
@@ -3335,8 +3337,15 @@
                 const j = Math.floor(Math.random() * (i + 1));
                 [farIndices[i], farIndices[j]] = [farIndices[j], farIndices[i]];
             }
-            const farPositions = generateVariedPositions(8, farBaseWidth, 80, 140);
-            for (let i = 0; i < 8; i++) {
+            const farPositions = generateVariedPositions(6, farBaseWidth, 110, 160);
+            // Clamp iconic landmarks away from edges to reduce "double landmark" at seams
+            const edgeBuffer = farBaseWidth * 0.15; // 15% buffer from edges
+            for (let i = 0; i < 6; i++) {
+                if (iconicIndices.includes(farIndices[i])) {
+                    farPositions[i] = Math.max(edgeBuffer, Math.min(farBaseWidth - 160 - edgeBuffer, farPositions[i]));
+                }
+            }
+            for (let i = 0; i < 6; i++) {
                 const d = document.createElement('div');
                 d.innerHTML = farSVGs[farIndices[i]];
                 const j = getElementJitter('far');
@@ -3371,9 +3380,9 @@
                 `<svg width="12" height="28" viewBox="0 0 12 28"><rect x="3" y="8" width="6" height="20" fill="#1A1A1A" opacity="0.7"/><ellipse cx="6" cy="8" rx="5" ry="3" fill="#2A2A2A" opacity="0.7"/><ellipse cx="6" cy="28" rx="5" ry="2" fill="#1A1A1A" opacity="0.6"/></svg>`
             ];
             const midBaseWidth = window.innerWidth;
-            const midIndices = generateNonAdjacentIndices(12, midSVGs.length);
-            const midPositions = generateVariedPositions(12, midBaseWidth, 40, 60);
-            for (let i = 0; i < 12; i++) {
+            const midIndices = generateNonAdjacentIndices(8, midSVGs.length);
+            const midPositions = generateVariedPositions(8, midBaseWidth, 65, 70);
+            for (let i = 0; i < 8; i++) {
                 const d = document.createElement('div');
                 d.innerHTML = midSVGs[midIndices[i]];
                 const j = getElementJitter('mid');
@@ -3402,9 +3411,9 @@
                 `<svg width="40" height="40" viewBox="0 0 40 40"><ellipse cx="20" cy="36" rx="18" ry="4" fill="#909090" opacity="0.7"/><rect x="16" y="20" width="8" height="16" fill="#A0A0A0" opacity="0.7"/><ellipse cx="20" cy="20" rx="8" ry="3" fill="#A0A0A0" opacity="0.7"/><ellipse cx="20" cy="12" rx="3" ry="8" fill="#88BBDD" opacity="0.4"/></svg>`
             ];
             const parkBaseWidth = window.innerWidth;
-            const parkIndices = generateNonAdjacentIndices(14, parkSVGs.length);
-            const parkPositions = generateVariedPositions(14, parkBaseWidth, 35, 50);
-            for (let i = 0; i < 14; i++) {
+            const parkIndices = generateNonAdjacentIndices(9, parkSVGs.length);
+            const parkPositions = generateVariedPositions(9, parkBaseWidth, 55, 60);
+            for (let i = 0; i < 9; i++) {
                 const d = document.createElement('div');
                 d.innerHTML = parkSVGs[parkIndices[i]];
                 const j = getElementJitter('park');
@@ -4218,18 +4227,13 @@
             }
         }
 
-        // Journey framing v2 - Reflective, gentle game-over messages
-        // Focus on progress toward home, not failure or conquest
-        // CHANGE (story): home clarity — special message when player reached Home (1900+)
+        // Journey framing v2 - Game-over message based on current location index
+        // Uses currentJourneyStageIndex: 0 = Hyde Park (first location), >= 1 = later locations
         function getGameOverMessage(finalScore) {
-            // Final stage threshold (Home) - acknowledge they made it
-            if (finalScore >= 1900) return "He made it home today.";
-            if (finalScore < 50) return "A short walk, but a start.";
-            if (finalScore < 200) return "He found his bearings.";
-            if (finalScore < 450) return "A little further this time.";
-            if (finalScore < 800) return "He's learning the way.";
-            if (finalScore < 1300) return "So close to familiar streets.";
-            return "Home is just ahead.";  // Tower Bridge range (1300-1899)
+            if (currentJourneyStageIndex === 0) {
+                return "Still lost, but learning the city.";
+            }
+            return "He's starting to find his way.";
         }
 
         // Game-over polish - Part D: Best score management
