@@ -7,8 +7,8 @@
     <!-- Social preview metadata -->
     <meta property="og:title" content="Tater's Adventure Through London">
     <meta property="og:description" content="An endless runner about helping a lost dog find his way home. Built in collaboration with AI.">
-    <meta property="og:image" content="https://patricstar21.github.io/tatersadventure/preview-final.jpg">
-    <meta property="og:image:secure_url" content="https://patricstar21.github.io/tatersadventure/preview-final.jpg">
+    <meta property="og:image" content="https://patricstar21.github.io/tatersadventure/preview-v2.jpg">
+    <meta property="og:image:secure_url" content="https://patricstar21.github.io/tatersadventure/preview.jpg">
     <meta property="og:image:type" content="image/jpeg">
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
@@ -18,11 +18,11 @@
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="Tater's Adventure Through London">
     <meta name="twitter:description" content="An endless runner about helping a lost dog find his way home. Built in collaboration with AI.">
-    <meta name="twitter:image" content="https://patricstar21.github.io/tatersadventure/preview-final.jpg">
+    <meta name="twitter:image" content="https://patricstar21.github.io/tatersadventure/preview.jpg">
 
     <!-- Favicon -->
     <link rel="icon" href="favicon.ico?v=1.1">
-    <link rel="apple-touch-icon" href="preview-final.jpg">
+    <link rel="apple-touch-icon" href="preview.jpg">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -40,8 +40,9 @@
 
         /* CHANGE (ambient): CSS variable for background motion speed factor */
         /* ambientMotionFactor = 1.0 is normal; < 1.0 is slower (e.g., 0.55 for calm pre-run) */
+        /* Initial value matches AMBIENT_RAMP_START to prevent "sprint" on page load */
         :root {
-            --ambient-motion-factor: 1;
+            --ambient-motion-factor: 0.55;
         }
 
         html, body {
@@ -80,14 +81,14 @@
             position: absolute;
             top: 20px;
             left: 0;
-            width: 200%;
+            width: 300%;
             height: 140px;
-            animation: scroll-clouds calc(60s / var(--ambient-motion-factor)) linear infinite;
+            animation: scroll-clouds calc(120s / var(--ambient-motion-factor)) linear infinite;
         }
         .clouds.paused { animation-play-state: paused; }
         @keyframes scroll-clouds {
             0% { transform: translateX(0); }
-            100% { transform: translateX(-50%); }
+            100% { transform: translateX(-66.6667%); }
         }
         .cloud {
             position: absolute;
@@ -99,14 +100,14 @@
             position: absolute;
             bottom: 32%;
             left: 0;
-            width: 200%;
+            width: 300%;
             height: 180px;
-            animation: scroll-far calc(80s / var(--ambient-motion-factor)) linear infinite;
+            animation: scroll-far calc(160s / var(--ambient-motion-factor)) linear infinite;
         }
         .landmarks-far.paused { animation-play-state: paused; }
         @keyframes scroll-far {
             0% { transform: translateX(0); }
-            100% { transform: translateX(-50%); }
+            100% { transform: translateX(-66.6667%); }
         }
 
         /* Atmospheric haze layer - static gradient between far skyline and mid layer */
@@ -130,28 +131,28 @@
             position: absolute;
             bottom: 28%;
             left: 0;
-            width: 200%;
+            width: 300%;
             height: 160px;
-            animation: scroll-mid calc(50s / var(--ambient-motion-factor)) linear infinite;
+            animation: scroll-mid calc(100s / var(--ambient-motion-factor)) linear infinite;
         }
         .landmarks-mid.paused { animation-play-state: paused; }
         @keyframes scroll-mid {
             0% { transform: translateX(0); }
-            100% { transform: translateX(-50%); }
+            100% { transform: translateX(-66.6667%); }
         }
 
         .park-elements {
             position: absolute;
             bottom: 22%;
             left: 0;
-            width: 200%;
+            width: 300%;
             height: 130px;
-            animation: scroll-park calc(30s / var(--ambient-motion-factor)) linear infinite;
+            animation: scroll-park calc(60s / var(--ambient-motion-factor)) linear infinite;
         }
         .park-elements.paused { animation-play-state: paused; }
         @keyframes scroll-park {
             0% { transform: translateX(0); }
-            100% { transform: translateX(-50%); }
+            100% { transform: translateX(-66.6667%); }
         }
 
         .grass {
@@ -167,12 +168,12 @@
             position: absolute;
             bottom: calc(9% - 4%);
             left: 0;
-            width: 200%;
+            width: 300%;
             height: 60px;
             background: linear-gradient(180deg, #D4C8B8 0%, #C4B8A8 30%, #B4A898 70%, #A49888 100%);
             border-top: 3px solid #8A7A6A;
             border-bottom: 3px solid #7A6A5A;
-            animation: scroll-path calc(8s / var(--ambient-motion-factor)) linear infinite;
+            animation: scroll-path calc(16s / var(--ambient-motion-factor)) linear infinite;
         }
         @media (max-width: 520px) {
   .path {
@@ -182,7 +183,7 @@
         .path.paused { animation-play-state: paused; }
         @keyframes scroll-path {
             0% { transform: translateX(0); }
-            100% { transform: translateX(-50%); }
+            100% { transform: translateX(-66.6667%); }
         }
 
         .tater-container {
@@ -1650,7 +1651,17 @@
                 background: rgba(255,255,255,0.95);
                 padding: 5px 14px;
                 border-radius: 8px;
+                border: 2px solid transparent;
+                box-shadow: 0 3px 12px transparent;
                 z-index: 502;
+                /* Smooth transition between hero (pre-run) and quiet (in-run) states */
+                transition: font-size 280ms ease-out, padding 280ms ease-out,
+                            border-color 280ms ease-out, border-radius 280ms ease-out,
+                            box-shadow 280ms ease-out, opacity 280ms ease-out;
+            }
+            /* Respect reduce-motion: disable title transitions */
+            body.reduce-motion .game-title {
+                transition: none;
             }
             /* Pre-run: title is HERO lockup - prominent, bold, allows wrapping */
             body:not(.playing) .game-title {
@@ -1662,23 +1673,23 @@
                 white-space: normal;
                 line-height: 1.15;
                 padding: 10px 18px;
-                border: 2px solid rgba(160,128,96,0.55);
+                border-color: rgba(160,128,96,0.55);
                 border-radius: 14px;
                 box-shadow: 0 3px 12px rgba(74,60,40,0.18);
             }
-            /* During play: title fades but stays readable */
+            /* During play: title shrinks gently, border/shadow fade out */
             body.playing .game-title {
-                opacity: 0.7;
-                font-size: 12px;
+                opacity: 0.75;
+                font-size: 14px;
                 font-weight: inherit;
                 letter-spacing: normal;
                 max-width: none;
                 white-space: nowrap;
                 line-height: inherit;
-                padding: 5px 14px;
-                border: none;
+                padding: 5px 12px;
+                border-color: transparent;
                 border-radius: 8px;
-                box-shadow: none;
+                box-shadow: 0 3px 12px transparent;
             }
             /* Location bar sits below title with clear gap */
             .location-display {
@@ -1731,21 +1742,22 @@
                 white-space: normal;
                 line-height: 1.15;
                 padding: 8px 14px;
-                border: 2px solid rgba(160,128,96,0.55);
+                border-color: rgba(160,128,96,0.55);
                 border-radius: 12px;
                 box-shadow: 0 2px 10px rgba(74,60,40,0.15);
             }
+            /* During play: gentler shrink for small screens */
             body.playing .game-title {
-                font-size: 11px;
+                font-size: 12px;
                 font-weight: inherit;
                 letter-spacing: normal;
                 max-width: none;
                 white-space: nowrap;
                 line-height: inherit;
                 padding: 4px 10px;
-                border: none;
+                border-color: transparent;
                 border-radius: 8px;
-                box-shadow: none;
+                box-shadow: 0 2px 10px transparent;
             }
             .location-display {
                 top: max(110px, calc(env(safe-area-inset-top) + 102px));
@@ -2497,10 +2509,13 @@
             setAmbientMotionFactor(AMBIENT_RAMP_END);
         }
 
+        // resetAmbientRamp: MUST set AMBIENT_RAMP_START (not END) for pre-run calm state.
+        // This ensures the background is slow during pre-run, matching the speed when gameplay
+        // begins via startAmbientRamp(). Setting END here would cause a "sprint" visual glitch.
         function resetAmbientRamp() {
             ambientRampActive = false;
             ambientRampPausedElapsed = 0;
-            setAmbientMotionFactor(AMBIENT_RAMP_END); // Reset to normal speed for pre-run
+            setAmbientMotionFactor(AMBIENT_RAMP_START);
         }
 
         function pauseAmbientRamp() {
@@ -3178,24 +3193,29 @@
             mid.innerHTML = '';
             park.innerHTML = '';
 
-            // Helper: duplicate elements for seamless 200% width tiling
+            // Helper: duplicate elements for seamless 300% width tiling (3 segments)
             function duplicateForSeamless(container, baseWidth) {
                 const children = Array.from(container.children);
                 children.forEach(child => {
-                    const clone = child.cloneNode(true);
                     const currentLeft = parseFloat(child.style.left) || 0;
-                    clone.style.left = (currentLeft + baseWidth) + 'px';
-                    container.appendChild(clone);
+                    // First clone at baseWidth offset
+                    const clone1 = child.cloneNode(true);
+                    clone1.style.left = (currentLeft + baseWidth) + 'px';
+                    container.appendChild(clone1);
+                    // Second clone at 2*baseWidth offset
+                    const clone2 = child.cloneNode(true);
+                    clone2.style.left = (currentLeft + baseWidth * 2) + 'px';
+                    container.appendChild(clone2);
                 });
             }
 
             // CLOUDS - generate for first half, then duplicate
             const cloudBaseWidth = window.innerWidth;
+            const cloudPositions = generateVariedPositions(8, cloudBaseWidth, 60, 120);
             for (let i = 0; i < 8; i++) {
                 const c = document.createElement('div');
                 c.className = 'cloud';
-                const left = (i / 8) * cloudBaseWidth;
-                c.style.cssText = `left:${left}px;top:${5+Math.random()*90}px;width:${60+Math.random()*100}px;height:${25+Math.random()*35}px`;
+                c.style.cssText = `left:${cloudPositions[i]}px;top:${5+Math.random()*90}px;width:${60+Math.random()*100}px;height:${25+Math.random()*35}px`;
                 clouds.appendChild(c);
             }
             duplicateForSeamless(clouds, cloudBaseWidth);
@@ -3224,9 +3244,9 @@
             // Only called at creation time, not per-frame (safe for performance)
             function getElementJitter(layer) {
                 const jitter = {
-                    far:  { yRange: 8,  scaleRange: 0.08, opacityRange: 0.08 },
-                    mid:  { yRange: 5,  scaleRange: 0.06, opacityRange: 0.06 },
-                    park: { yRange: 4,  scaleRange: 0.05, opacityRange: 0.05 }
+                    far:  { yRange: 10, scaleRange: 0.12, opacityRange: 0.12 },
+                    mid:  { yRange: 6,  scaleRange: 0.08, opacityRange: 0.08 },
+                    park: { yRange: 5,  scaleRange: 0.06, opacityRange: 0.06 }
                 };
                 const j = jitter[layer] || jitter.mid;
                 return {
@@ -3234,6 +3254,37 @@
                     scale: 1 + (Math.random() - 0.5) * 2 * j.scaleRange,
                     opacity: 1 - Math.random() * j.opacityRange
                 };
+            }
+
+            // Helper: generate varied x positions with clustering + gaps (breaks even cadence)
+            // Runs once at generation time. Positions stay within [0, baseWidth - margin].
+            function generateVariedPositions(count, baseWidth, minSep, margin) {
+                const maxX = baseWidth - margin;
+                const positions = [];
+                // Start with even distribution, then apply controlled variance
+                const avgSlot = maxX / count;
+                for (let i = 0; i < count; i++) {
+                    // Base position with variance: allow ±35% of slot width shift
+                    const base = i * avgSlot;
+                    const variance = (Math.random() - 0.5) * avgSlot * 0.7;
+                    let x = base + variance;
+                    // Clamp to valid range
+                    x = Math.max(0, Math.min(maxX, x));
+                    positions.push(x);
+                }
+                // Sort and enforce minimum separation (push apart if too close)
+                positions.sort((a, b) => a - b);
+                for (let i = 1; i < positions.length; i++) {
+                    if (positions[i] - positions[i-1] < minSep) {
+                        positions[i] = Math.min(maxX, positions[i-1] + minSep);
+                    }
+                }
+                // Shuffle to break left-to-right correlation with indices
+                for (let i = positions.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [positions[i], positions[j]] = [positions[j], positions[i]];
+                }
+                return positions;
             }
 
             // FAR LAYER - London skyline with iconic landmarks + terraced roofs with chimneys
@@ -3259,18 +3310,19 @@
                 // NEW: Westminster Bridge span with lampposts
                 `<svg width="160" height="80" viewBox="0 0 160 80"><path d="M 0 70 Q 40 50 80 70 Q 120 50 160 70" stroke="#8090A0" stroke-width="6" fill="none" opacity="0.38"/><rect x="0" y="70" width="160" height="10" fill="#8898A8" opacity="0.35"/><rect x="38" y="35" width="4" height="35" fill="#707080" opacity="0.45"/><ellipse cx="40" cy="32" rx="5" ry="6" fill="#9098A8" opacity="0.4"/><rect x="78" y="30" width="4" height="40" fill="#707080" opacity="0.45"/><ellipse cx="80" cy="27" rx="5" ry="6" fill="#9098A8" opacity="0.4"/><rect x="118" y="35" width="4" height="35" fill="#707080" opacity="0.45"/><ellipse cx="120" cy="32" rx="5" ry="6" fill="#9098A8" opacity="0.4"/></svg>`,
                 // NEW: Dense chimney pots cluster (Victorian industrial roofline)
-                `<svg width="110" height="85" viewBox="0 0 110 85"><rect x="2" y="40" width="25" height="45" fill="#9090A0" opacity="0.4"/><rect x="29" y="35" width="25" height="50" fill="#9898A8" opacity="0.4"/><rect x="56" y="42" width="25" height="43" fill="#8888A0" opacity="0.4"/><rect x="83" y="38" width="25" height="47" fill="#9090A8" opacity="0.4"/><rect x="6" y="28" width="5" height="14" fill="#606068" opacity="0.5"/><rect x="14" y="30" width="5" height="12" fill="#606068" opacity="0.5"/><rect x="33" y="22" width="5" height="15" fill="#606068" opacity="0.5"/><rect x="41" y="25" width="5" height="12" fill="#606068" opacity="0.5"/><rect x="49" y="23" width="5" height="14" fill="#606068" opacity="0.5"/><rect x="60" y="30" width="5" height="14" fill="#606068" opacity="0.5"/><rect x="68" y="32" width="5" height="12" fill="#606068" opacity="0.5"/><rect x="76" y="30" width="5" height="14" fill="#606068" opacity="0.5"/><rect x="87" y="26" width="5" height="14" fill="#606068" opacity="0.5"/><rect x="95" y="28" width="5" height="12" fill="#606068" opacity="0.5"/><rect x="103" y="26" width="5" height="14" fill="#606068" opacity="0.5"/></svg>`
+                `<svg width="110" height="85" viewBox="0 0 110 85"><rect x="2" y="40" width="25" height="45" fill="#9090A0" opacity="0.4"/><rect x="29" y="35" width="25" height="50" fill="#9898A8" opacity="0.4"/><rect x="56" y="42" width="25" height="43" fill="#8888A0" opacity="0.4"/><rect x="83" y="38" width="25" height="47" fill="#9090A8" opacity="0.4"/><rect x="6" y="28" width="5" height="14" fill="#606068" opacity="0.5"/><rect x="14" y="30" width="5" height="12" fill="#606068" opacity="0.5"/><rect x="33" y="22" width="5" height="15" fill="#606068" opacity="0.5"/><rect x="41" y="25" width="5" height="12" fill="#606068" opacity="0.5"/><rect x="49" y="23" width="5" height="14" fill="#606068" opacity="0.5"/><rect x="60" y="30" width="5" height="14" fill="#606068" opacity="0.5"/><rect x="68" y="32" width="5" height="12" fill="#606068" opacity="0.5"/><rect x="76" y="30" width="5" height="14" fill="#606068" opacity="0.5"/><rect x="87" y="26" width="5" height="14" fill="#606068" opacity="0.5"/><rect x="95" y="28" width="5" height="12" fill="#606068" opacity="0.5"/><rect x="103" y="26" width="5" height="14" fill="#606068" opacity="0.5"/></svg>`,
+                // RARE: Distant Canary Wharf cluster (very low contrast, atmospheric depth)
+                `<svg width="90" height="140" viewBox="0 0 90 140"><rect x="35" y="20" width="20" height="120" fill="#A0A8B8" opacity="0.22"/><rect x="33" y="15" width="24" height="8" fill="#A0A8B8" opacity="0.2"/><polygon points="45,0 38,15 52,15" fill="#A8B0C0" opacity="0.18"/><rect x="10" y="50" width="18" height="90" fill="#98A0B0" opacity="0.2"/><rect x="62" y="45" width="18" height="95" fill="#98A0B0" opacity="0.2"/><rect x="5" y="70" width="12" height="70" fill="#9098A8" opacity="0.18"/><rect x="73" y="65" width="12" height="75" fill="#9098A8" opacity="0.18"/></svg>`
             ];
             const farBaseWidth = window.innerWidth;
             const farIndices = generateNonAdjacentIndices(8, farSVGs.length);
-            let x = 0;
+            const farPositions = generateVariedPositions(8, farBaseWidth, 80, 140);
             for (let i = 0; i < 8; i++) {
                 const d = document.createElement('div');
                 d.innerHTML = farSVGs[farIndices[i]];
                 const j = getElementJitter('far');
-                d.style.cssText = `position:absolute;left:${x}px;bottom:${j.y}px;transform:scale(${j.scale});opacity:${j.opacity}`;
+                d.style.cssText = `position:absolute;left:${farPositions[i]}px;bottom:${j.y}px;transform:scale(${j.scale});opacity:${j.opacity}`;
                 far.appendChild(d);
-                x += farBaseWidth / 8;
             }
             duplicateForSeamless(far, farBaseWidth);
 
@@ -3301,14 +3353,13 @@
             ];
             const midBaseWidth = window.innerWidth;
             const midIndices = generateNonAdjacentIndices(12, midSVGs.length);
-            x = 0;
+            const midPositions = generateVariedPositions(12, midBaseWidth, 40, 60);
             for (let i = 0; i < 12; i++) {
                 const d = document.createElement('div');
                 d.innerHTML = midSVGs[midIndices[i]];
                 const j = getElementJitter('mid');
-                d.style.cssText = `position:absolute;left:${x}px;bottom:${j.y}px;transform:scale(${j.scale});opacity:${j.opacity}`;
+                d.style.cssText = `position:absolute;left:${midPositions[i]}px;bottom:${j.y}px;transform:scale(${j.scale});opacity:${j.opacity}`;
                 mid.appendChild(d);
-                x += midBaseWidth / 12;
             }
             duplicateForSeamless(mid, midBaseWidth);
 
@@ -3333,14 +3384,13 @@
             ];
             const parkBaseWidth = window.innerWidth;
             const parkIndices = generateNonAdjacentIndices(14, parkSVGs.length);
-            x = 0;
+            const parkPositions = generateVariedPositions(14, parkBaseWidth, 35, 50);
             for (let i = 0; i < 14; i++) {
                 const d = document.createElement('div');
                 d.innerHTML = parkSVGs[parkIndices[i]];
                 const j = getElementJitter('park');
-                d.style.cssText = `position:absolute;left:${x}px;bottom:${j.y}px;transform:scale(${j.scale});opacity:${j.opacity}`;
+                d.style.cssText = `position:absolute;left:${parkPositions[i]}px;bottom:${j.y}px;transform:scale(${j.scale});opacity:${j.opacity}`;
                 park.appendChild(d);
-                x += parkBaseWidth / 14;
             }
             duplicateForSeamless(park, parkBaseWidth);
         }
@@ -4320,7 +4370,7 @@
             invalidateCandidateCache(); // Step 2.6 spawn gate accuracy
             scoreDisplay.textContent = '0'; updateLives();
             resetJourneyState(); // Journey framing - reset location display and milestone tracking
-            resetAmbientRamp(); // CHANGE (ambient-ramp): Reset to normal speed for pre-run
+            resetAmbientRamp(); // CHANGE (ambient-ramp): Reset to calm speed for pre-run (no sprint)
             resetHighSpeedVisual(); // CHANGE (high-speed-visual): Remove high-speed class on reset
             obstacles.forEach(o => o.element.remove()); obstacles = [];
             powerups.forEach(p => p.element.remove()); powerups = [];
