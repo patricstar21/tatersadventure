@@ -3347,10 +3347,12 @@
             const nonIconicIndices = [1, 3, 7, 9, 10, 11, 12, 13];
             const farIndices = [];
             const usedIconic = new Set();
-            // Guarantee at least 2 non-iconic picks for variety
-            for (let i = 0; i < 2; i++) {
-                farIndices.push(nonIconicIndices[Math.floor(Math.random() * nonIconicIndices.length)]);
-            }
+            // Guarantee at least 1 iconic landmark per segment (randomly chosen)
+            const guaranteedIconic = iconicIndices[Math.floor(Math.random() * iconicIndices.length)];
+            farIndices.push(guaranteedIconic);
+            usedIconic.add(guaranteedIconic);
+            // Add 1 non-iconic for variety
+            farIndices.push(nonIconicIndices[Math.floor(Math.random() * nonIconicIndices.length)]);
             // Fill remaining slots, allowing iconic only once each
             while (farIndices.length < farCount) {
                 const pool = [];
