@@ -1647,49 +1647,43 @@
             /* Mobile title hierarchy: Title is PRIMARY, below .ui-top with comfortable gap */
             .game-title {
                 top: max(74px, calc(env(safe-area-inset-top) + 66px));
+                /* Stable base size - no font-size animation (causes reflow/pop) */
                 font-size: 15px;
                 background: rgba(255,255,255,0.95);
-                padding: 5px 14px;
-                border-radius: 8px;
+                padding: 8px 16px;
+                border-radius: 10px;
                 border: 2px solid transparent;
                 box-shadow: 0 3px 12px transparent;
                 z-index: 502;
-                /* Smooth transition between hero (pre-run) and quiet (in-run) states */
-                transition: font-size 280ms ease-out, padding 280ms ease-out,
-                            border-color 280ms ease-out, border-radius 280ms ease-out,
-                            box-shadow 280ms ease-out, opacity 280ms ease-out;
+                /* Transform-based scaling avoids layout reflow */
+                transform-origin: center center;
+                /* Smooth transition: transform + opacity first, then decorative fade */
+                transition: transform 320ms ease-out,
+                            opacity 280ms ease-out,
+                            border-color 400ms ease-out 80ms,
+                            box-shadow 400ms ease-out 80ms;
             }
             /* Respect reduce-motion: disable title transitions */
             body.reduce-motion .game-title {
                 transition: none;
             }
-            /* Pre-run: title is HERO lockup - prominent, bold, allows wrapping */
+            /* Pre-run: title is HERO lockup - uses scale for size, not font-size */
             body:not(.playing) .game-title {
                 opacity: 1;
-                font-size: clamp(20px, 5.2vw, 28px);
+                transform: translateX(-50%) scale(1.5);
                 font-weight: 900;
-                letter-spacing: 0.2px;
-                max-width: calc(100vw - 24px);
-                white-space: normal;
-                line-height: 1.15;
-                padding: 10px 18px;
+                letter-spacing: 0.3px;
                 border-color: rgba(160,128,96,0.55);
-                border-radius: 14px;
-                box-shadow: 0 3px 12px rgba(74,60,40,0.18);
+                box-shadow: 0 4px 16px rgba(74,60,40,0.22);
             }
-            /* During play: title shrinks gently, border/shadow fade out */
+            /* During play: scale down smoothly, decorative elements fade */
             body.playing .game-title {
-                opacity: 0.75;
-                font-size: 14px;
+                opacity: 0.85;
+                transform: translateX(-50%) scale(1);
                 font-weight: inherit;
                 letter-spacing: normal;
-                max-width: none;
-                white-space: nowrap;
-                line-height: inherit;
-                padding: 5px 12px;
                 border-color: transparent;
-                border-radius: 8px;
-                box-shadow: 0 3px 12px transparent;
+                box-shadow: 0 2px 8px transparent;
             }
             /* Location bar sits below title with clear gap */
             .location-display {
@@ -1730,34 +1724,20 @@
         @media (max-width: 360px) {
             .game-title {
                 top: max(68px, calc(env(safe-area-inset-top) + 60px));
-                font-size: 13px;
-                padding: 4px 10px;
-            }
-            /* Pre-run: title is HERO lockup - scaled down for smaller screens */
-            body:not(.playing) .game-title {
-                font-size: clamp(18px, 6vw, 24px);
-                font-weight: 900;
-                letter-spacing: 0.2px;
-                max-width: calc(100vw - 20px);
-                white-space: normal;
-                line-height: 1.15;
-                padding: 8px 14px;
-                border-color: rgba(160,128,96,0.55);
-                border-radius: 12px;
-                box-shadow: 0 2px 10px rgba(74,60,40,0.15);
-            }
-            /* During play: gentler shrink for small screens */
-            body.playing .game-title {
                 font-size: 12px;
-                font-weight: inherit;
-                letter-spacing: normal;
-                max-width: none;
-                white-space: nowrap;
-                line-height: inherit;
-                padding: 4px 10px;
+                padding: 6px 12px;
+            }
+            /* Pre-run: hero scale slightly smaller on tiny screens */
+            body:not(.playing) .game-title {
+                transform: translateX(-50%) scale(1.4);
+                border-color: rgba(160,128,96,0.55);
+                box-shadow: 0 3px 12px rgba(74,60,40,0.18);
+            }
+            /* During play: same smooth scale-down */
+            body.playing .game-title {
+                transform: translateX(-50%) scale(1);
                 border-color: transparent;
-                border-radius: 8px;
-                box-shadow: 0 2px 10px transparent;
+                box-shadow: 0 2px 8px transparent;
             }
             .location-display {
                 top: max(110px, calc(env(safe-area-inset-top) + 102px));
