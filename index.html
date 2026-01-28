@@ -45,12 +45,14 @@
             --ambient-motion-factor: 0.55;
         }
 
+        /* iOS compositor flash prevention: explicit background at every layer */
         html, body {
             height: 100%;
             width: 100%;
             overflow: hidden;
             position: fixed;
             touch-action: manipulation;
+            background: #87A5B8;
         }
 
         body {
@@ -61,11 +63,17 @@
             font-family: 'Fredoka One', 'Georgia', serif;
         }
 
+        /* iOS compositor flash prevention: explicit background + GPU layer promotion */
         .game-container {
             position: relative;
             width: 100%;
             height: 100%;
             overflow: hidden;
+            background: #87A5B8;
+            -webkit-transform: translateZ(0);
+            transform: translateZ(0);
+            -webkit-backface-visibility: hidden;
+            backface-visibility: hidden;
         }
 
         .sky {
@@ -75,6 +83,10 @@
             width: 100%;
             height: 70%;
             background: linear-gradient(180deg, #6A8FA8 0%, #8AACBE 30%, #A8C4D4 60%, #C8DDE8 100%);
+            -webkit-transform: translateZ(0);
+            transform: translateZ(0);
+            -webkit-backface-visibility: hidden;
+            backface-visibility: hidden;
         }
 
         .clouds {
@@ -84,11 +96,14 @@
             width: 300%;
             height: 140px;
             animation: scroll-clouds calc(120s / var(--ambient-motion-factor)) linear infinite;
+            will-change: transform;
+            -webkit-backface-visibility: hidden;
+            backface-visibility: hidden;
         }
         .clouds.paused { animation-play-state: paused; }
         @keyframes scroll-clouds {
-            0% { transform: translateX(0); }
-            100% { transform: translateX(-66.6667%); }
+            0% { transform: translate3d(0, 0, 0); }
+            100% { transform: translate3d(-66.6667%, 0, 0); }
         }
         .cloud {
             position: absolute;
@@ -103,11 +118,14 @@
             width: 300%;
             height: 180px;
             animation: scroll-far calc(160s / var(--ambient-motion-factor)) linear infinite;
+            will-change: transform;
+            -webkit-backface-visibility: hidden;
+            backface-visibility: hidden;
         }
         .landmarks-far.paused { animation-play-state: paused; }
         @keyframes scroll-far {
-            0% { transform: translateX(0); }
-            100% { transform: translateX(-66.6667%); }
+            0% { transform: translate3d(0, 0, 0); }
+            100% { transform: translate3d(-66.6667%, 0, 0); }
         }
 
         /* Atmospheric haze layer - static gradient between far skyline and mid layer */
@@ -135,11 +153,14 @@
             height: 160px;
             opacity: 0.92;
             animation: scroll-mid calc(100s / var(--ambient-motion-factor)) linear infinite;
+            will-change: transform;
+            -webkit-backface-visibility: hidden;
+            backface-visibility: hidden;
         }
         .landmarks-mid.paused { animation-play-state: paused; }
         @keyframes scroll-mid {
-            0% { transform: translateX(0); }
-            100% { transform: translateX(-66.6667%); }
+            0% { transform: translate3d(0, 0, 0); }
+            100% { transform: translate3d(-66.6667%, 0, 0); }
         }
 
         .park-elements {
@@ -150,11 +171,14 @@
             height: 130px;
             opacity: 0.88;
             animation: scroll-park calc(60s / var(--ambient-motion-factor)) linear infinite;
+            will-change: transform;
+            -webkit-backface-visibility: hidden;
+            backface-visibility: hidden;
         }
         .park-elements.paused { animation-play-state: paused; }
         @keyframes scroll-park {
-            0% { transform: translateX(0); }
-            100% { transform: translateX(-66.6667%); }
+            0% { transform: translate3d(0, 0, 0); }
+            100% { transform: translate3d(-66.6667%, 0, 0); }
         }
 
         .grass {
@@ -491,15 +515,15 @@
         /* Pre-state: holds obstacle invisible until viewport entry triggers animation (high speed only) */
         .sprite.spawn-pending {
             opacity: 0;
-            transform: translate3d(28px, 0, 0) scale(0.96);
+            transform: translateY(6px) scale(0.96);
         }
         .sprite.spawning {
             /* Priority 3 Difficulty: Extended reveal delays visual certainty, not hitbox */
             animation: sprite-spawn 260ms ease-out forwards;
         }
         @keyframes sprite-spawn {
-            0% { opacity: 0; transform: translate3d(28px, 0, 0) scale(0.96); }
-            100% { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+            0% { opacity: 0; transform: translateY(6px) scale(0.96); }
+            100% { opacity: 1; transform: translateY(0) scale(1); }
         }
 
         /* Flying objects polish - entry telegraph (brief attention-getting bob) */
@@ -539,9 +563,9 @@
             animation: thunder-jitter 0.15s ease-in-out infinite;
         }
         @keyframes thunder-jitter {
-            0%, 100% { transform: translateX(0); }
-            25% { transform: translateX(-1px); }
-            75% { transform: translateX(1px); }
+            0%, 100% { transform: translateY(0); }
+            25% { transform: translateY(-1px); }
+            75% { transform: translateY(1px); }
         }
 
         /* Vacuum: subtle vibration */
@@ -549,8 +573,8 @@
             animation: vacuum-shake 0.08s linear infinite;
         }
         @keyframes vacuum-shake {
-            0%, 100% { transform: translateX(0); }
-            50% { transform: translateX(1px); }
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-1px); }
         }
 
         /* Cat: subtle tail swish via slight bob */
@@ -1358,12 +1382,12 @@
         }
         /* Dampened keyframes with reduced amplitude for high-speed mode */
         @keyframes thunder-jitter-damped {
-            0%, 100% { transform: translateX(0); }
-            50% { transform: translateX(1.5px); } /* 25% reduced (was 2px) */
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-1px); }
         }
         @keyframes vacuum-shake-damped {
-            0%, 100% { transform: translateX(0); }
-            50% { transform: translateX(0.6px); } /* 40% reduced (was 1px) */
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-0.5px); }
         }
         @keyframes skateboard-roll-damped {
             0%, 100% { transform: translateY(0); }
@@ -3175,6 +3199,9 @@
             mid.innerHTML = '';
             park.innerHTML = '';
 
+            // Mobile clutter reduction: fewer background elements on small screens
+            const isSmallScreen = window.innerWidth <= 520;
+
             // Helper: duplicate elements for seamless 300% width tiling (3 segments)
             function duplicateForSeamless(container, baseWidth) {
                 const children = Array.from(container.children);
@@ -3310,6 +3337,9 @@
                 `<svg width="70" height="100" viewBox="0 0 70 100"><ellipse cx="35" cy="50" rx="30" ry="25" fill="#A0A8B8" opacity="0.18"/><rect x="15" y="70" width="40" height="30" fill="#98A0B0" opacity="0.16"/><ellipse cx="35" cy="30" rx="12" ry="15" fill="#A8B0C0" opacity="0.15"/><rect x="32" y="12" width="6" height="10" fill="#A0A8B8" opacity="0.14"/><circle cx="35" cy="10" r="4" fill="#B0B8C0" opacity="0.12"/></svg>`
             ];
             const farBaseWidth = window.innerWidth;
+            // Mobile clutter reduction: fewer FAR elements on small screens
+            const farCount = isSmallScreen ? 3 : 6;
+            const farMinSep = isSmallScreen ? 130 : 110;
             // FAR layer index generation: iconic landmarks appear at most ONCE per base segment
             // Iconic: Big Ben(0), London Eye(2), Tower Bridge(4), St Paul's(5), Shard(6), Gherkin(8)
             // Non-iconic fillers: terraces(1,3,7), bridge(9), chimneys(10), rare atmos(11,12,13)
@@ -3321,8 +3351,8 @@
             for (let i = 0; i < 2; i++) {
                 farIndices.push(nonIconicIndices[Math.floor(Math.random() * nonIconicIndices.length)]);
             }
-            // Fill remaining slots (6 total), allowing iconic only once each
-            while (farIndices.length < 6) {
+            // Fill remaining slots, allowing iconic only once each
+            while (farIndices.length < farCount) {
                 const pool = [];
                 // Add all non-iconic (always available)
                 nonIconicIndices.forEach(idx => pool.push(idx));
@@ -3337,15 +3367,15 @@
                 const j = Math.floor(Math.random() * (i + 1));
                 [farIndices[i], farIndices[j]] = [farIndices[j], farIndices[i]];
             }
-            const farPositions = generateVariedPositions(6, farBaseWidth, 110, 160);
+            const farPositions = generateVariedPositions(farCount, farBaseWidth, farMinSep, 160);
             // Clamp iconic landmarks away from edges to reduce "double landmark" at seams
-            const edgeBuffer = farBaseWidth * 0.15; // 15% buffer from edges
-            for (let i = 0; i < 6; i++) {
+            const edgeBuffer = farBaseWidth * 0.18; // 18% buffer from edges (increased for better seam hiding)
+            for (let i = 0; i < farCount; i++) {
                 if (iconicIndices.includes(farIndices[i])) {
                     farPositions[i] = Math.max(edgeBuffer, Math.min(farBaseWidth - 160 - edgeBuffer, farPositions[i]));
                 }
             }
-            for (let i = 0; i < 6; i++) {
+            for (let i = 0; i < farCount; i++) {
                 const d = document.createElement('div');
                 d.innerHTML = farSVGs[farIndices[i]];
                 const j = getElementJitter('far');
@@ -3380,9 +3410,10 @@
                 `<svg width="12" height="28" viewBox="0 0 12 28"><rect x="3" y="8" width="6" height="20" fill="#1A1A1A" opacity="0.7"/><ellipse cx="6" cy="8" rx="5" ry="3" fill="#2A2A2A" opacity="0.7"/><ellipse cx="6" cy="28" rx="5" ry="2" fill="#1A1A1A" opacity="0.6"/></svg>`
             ];
             const midBaseWidth = window.innerWidth;
-            const midIndices = generateNonAdjacentIndices(8, midSVGs.length);
-            const midPositions = generateVariedPositions(8, midBaseWidth, 65, 70);
-            for (let i = 0; i < 8; i++) {
+            const midCount = isSmallScreen ? 5 : 8;
+            const midIndices = generateNonAdjacentIndices(midCount, midSVGs.length);
+            const midPositions = generateVariedPositions(midCount, midBaseWidth, 65, 70);
+            for (let i = 0; i < midCount; i++) {
                 const d = document.createElement('div');
                 d.innerHTML = midSVGs[midIndices[i]];
                 const j = getElementJitter('mid');
@@ -3411,9 +3442,10 @@
                 `<svg width="40" height="40" viewBox="0 0 40 40"><ellipse cx="20" cy="36" rx="18" ry="4" fill="#909090" opacity="0.7"/><rect x="16" y="20" width="8" height="16" fill="#A0A0A0" opacity="0.7"/><ellipse cx="20" cy="20" rx="8" ry="3" fill="#A0A0A0" opacity="0.7"/><ellipse cx="20" cy="12" rx="3" ry="8" fill="#88BBDD" opacity="0.4"/></svg>`
             ];
             const parkBaseWidth = window.innerWidth;
-            const parkIndices = generateNonAdjacentIndices(9, parkSVGs.length);
-            const parkPositions = generateVariedPositions(9, parkBaseWidth, 55, 60);
-            for (let i = 0; i < 9; i++) {
+            const parkCount = isSmallScreen ? 6 : 9;
+            const parkIndices = generateNonAdjacentIndices(parkCount, parkSVGs.length);
+            const parkPositions = generateVariedPositions(parkCount, parkBaseWidth, 55, 60);
+            for (let i = 0; i < parkCount; i++) {
                 const d = document.createElement('div');
                 d.innerHTML = parkSVGs[parkIndices[i]];
                 const j = getElementJitter('park');
