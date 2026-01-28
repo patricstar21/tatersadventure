@@ -63,7 +63,7 @@
             font-family: 'Fredoka One', 'Georgia', serif;
         }
 
-        /* iOS compositor flash prevention: explicit background + GPU layer promotion */
+        /* iOS compositor flash prevention: explicit background + GPU layer promotion + containment */
         .game-container {
             position: relative;
             width: 100%;
@@ -74,6 +74,8 @@
             transform: translateZ(0);
             -webkit-backface-visibility: hidden;
             backface-visibility: hidden;
+            isolation: isolate;
+            contain: paint;
         }
 
         .sky {
@@ -244,19 +246,19 @@
         .tater.hurt {
             animation: tater-hurt 0.5s ease-out;
         }
-        /* Visual pass - hurt animation with consistent base shadow */
+        /* Visual pass - hurt animation (compositor-safe: transform + opacity only) */
         @keyframes tater-hurt {
-            0%, 100% { filter: drop-shadow(1px 2px 3px rgba(0,0,0,0.4)) drop-shadow(0 0 1px rgba(0,0,0,0.25)); }
-            20%, 60% { filter: drop-shadow(0 0 15px #ff4444) brightness(1.2); transform: translateX(-4px); }
-            40%, 80% { filter: drop-shadow(0 0 10px #ff4444) brightness(0.9); transform: translateX(4px); }
+            0%, 100% { opacity: 1; transform: translateX(0); }
+            20%, 60% { opacity: 0.7; transform: translateX(-4px); }
+            40%, 80% { opacity: 0.85; transform: translateX(4px); }
         }
         .tater.healed {
             animation: tater-heal 0.5s ease-out;
         }
-        /* Visual pass - heal animation with consistent base shadow */
+        /* Visual pass - heal animation (compositor-safe: transform + opacity only) */
         @keyframes tater-heal {
-            0%, 100% { filter: drop-shadow(1px 2px 3px rgba(0,0,0,0.4)) drop-shadow(0 0 1px rgba(0,0,0,0.25)); }
-            50% { filter: drop-shadow(0 0 20px #44ff44) brightness(1.2); transform: scale(1.08); }
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 1; transform: scale(1.08); }
         }
 
         /* ================================================================
@@ -265,12 +267,12 @@
            Stacking: .tater.defeated.hopeful blends both transforms
            ================================================================ */
 
-        /* Game-over polish - Part C: Tater's defeated state */
+        /* Game-over polish - Part C: Tater's defeated state (compositor-safe: no filter transition) */
         .tater.defeated {
             animation: none !important;
             transform: translateY(8px) rotate(-5deg);
-            filter: drop-shadow(1px 2px 3px rgba(0,0,0,0.4)) brightness(0.85) saturate(0.7);
-            transition: transform 0.4s ease-out, filter 0.4s ease-out;
+            opacity: 0.75;
+            transition: transform 0.4s ease-out, opacity 0.4s ease-out;
         }
         .tater.defeated .tater-tail,
         .tater.defeated .tater-ear-left,
@@ -658,17 +660,31 @@
             z-index: 60;
         }
 
-        /* Flying objects polish - bone powerup: gentle float + enhanced glow */
+        /* Flying objects polish - bone powerup: gentle float + compositor-safe glow */
         .sprite.bone-idle {
-            animation: bone-float 1.5s ease-in-out infinite, bone-glow 0.5s ease-in-out infinite alternate;
+            position: relative;
+            animation: bone-float 1.5s ease-in-out infinite;
+        }
+        .sprite.bone-idle::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 120%;
+            height: 120%;
+            transform: translate(-50%, -50%);
+            background: radial-gradient(ellipse at center, rgba(255,215,0,0.5) 0%, rgba(255,215,0,0) 70%);
+            pointer-events: none;
+            animation: bone-glow-pulse 0.5s ease-in-out infinite alternate;
+            z-index: -1;
         }
         @keyframes bone-float {
             0%, 100% { transform: translateY(0) rotate(-1deg); }
             50% { transform: translateY(-5px) rotate(1deg); }
         }
-        @keyframes bone-glow {
-            0% { filter: drop-shadow(0 0 5px #FFD700) drop-shadow(0 0 10px #FFD700); }
-            100% { filter: drop-shadow(0 0 12px #FFD700) drop-shadow(0 0 20px #FFEC8B); }
+        @keyframes bone-glow-pulse {
+            0% { opacity: 0.6; }
+            100% { opacity: 1; }
         }
 
         .ui-top {
@@ -977,6 +993,7 @@
             .hint { font-size: 14px; padding: 12px 28px; }
         }
 
+        /* iOS compositor stability: promote full-screen overlays to GPU layers */
         .damage-flash, .heal-flash {
             position: fixed;
             top: 0;
@@ -987,6 +1004,8 @@
             opacity: 0;
             z-index: 400;
             transition: opacity 0.1s;
+            transform: translate3d(0, 0, 0);
+            will-change: opacity;
         }
         .damage-flash { background: rgba(255,80,80,0.3); }
         .heal-flash { background: rgba(80,255,80,0.25); }
@@ -1049,6 +1068,11 @@
              max(16px, env(safe-area-inset-right))
              max(20px, env(safe-area-inset-bottom))
              max(16px, env(safe-area-inset-left));
+
+    /* iOS compositor stability */
+    -webkit-transform: translate3d(0, 0, 0);
+    transform: translate3d(0, 0, 0);
+    will-change: opacity;
 }
 
 .overlay.show { display: flex; }
@@ -1364,15 +1388,16 @@
         body.reduce-motion .sprite.bone-idle {
             animation: none !important;
             transform: none !important;
-            /* Keep a subtle static shadow for visibility, but no pulsing glow */
-            filter: drop-shadow(0 0 4px #FFD700) !important;
+        }
+        body.reduce-motion .sprite.bone-idle::after {
+            animation: none !important;
+            opacity: 0.5 !important;
         }
         /* Accessibility - Reduce Motion: Explicitly disable rapid jitter/shake animations */
         body.reduce-motion .sprite.thunder-idle,
         body.reduce-motion .sprite.vacuum-idle {
             animation: none !important;
             transform: none !important;
-            filter: none !important;
         }
 
         /* CHANGE (high-speed-visual): Dampen noisy idle animations at high speed to reduce eye strain */
@@ -1580,16 +1605,31 @@
             opacity: 1;
         }
 
-        /* Game-over polish - Part B: Cinematic framing (dim/desaturate) */
-        .game-container.defeat-cinematic {
-            filter: brightness(0.7) saturate(0.5) contrast(1.1);
-            transition: filter 0.5s ease-out;
+        /* Game-over polish - Part B: Cinematic framing (dim overlay, no filter for iOS stability) */
+        .game-container::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.35);
+            pointer-events: none;
+            opacity: 0;
+            z-index: 100;
+            transition: opacity 0.5s ease-out;
+            transform: translate3d(0, 0, 0);
+            will-change: opacity;
         }
-        body.reduce-motion .game-container.defeat-cinematic {
+        .game-container.defeat-cinematic::after {
+            opacity: 1;
+        }
+        body.reduce-motion .game-container::after {
             transition: none !important;
         }
 
         /* Game-over polish - Part B: Vignette overlay */
+        /* iOS compositor stability: promote to GPU layer to prevent flash */
         .vignette-overlay {
             position: fixed;
             top: 0;
@@ -1601,6 +1641,8 @@
             background: radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.5) 100%);
             z-index: 450;
             transition: opacity 0.5s ease-out;
+            transform: translate3d(0, 0, 0);
+            will-change: opacity;
         }
         .vignette-overlay.show {
             opacity: 1;
