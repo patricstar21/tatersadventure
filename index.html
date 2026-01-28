@@ -3215,7 +3215,10 @@
             for (let i = 0; i < 8; i++) {
                 const c = document.createElement('div');
                 c.className = 'cloud';
-                c.style.cssText = `left:${cloudPositions[i]}px;top:${5+Math.random()*90}px;width:${60+Math.random()*100}px;height:${25+Math.random()*35}px`;
+                const j = getElementJitter('cloud');
+                const baseWidth = 60 + Math.random() * 100;
+                const baseHeight = 25 + Math.random() * 35;
+                c.style.cssText = `left:${cloudPositions[i]}px;top:${5+Math.random()*90}px;width:${baseWidth * j.scale}px;height:${baseHeight * j.scale}px;opacity:${0.7 + Math.random()*0.3 * j.opacity}`;
                 clouds.appendChild(c);
             }
             duplicateForSeamless(clouds, cloudBaseWidth);
@@ -3244,9 +3247,10 @@
             // Only called at creation time, not per-frame (safe for performance)
             function getElementJitter(layer) {
                 const jitter = {
-                    far:  { yRange: 10, scaleRange: 0.12, opacityRange: 0.12 },
-                    mid:  { yRange: 6,  scaleRange: 0.08, opacityRange: 0.08 },
-                    park: { yRange: 5,  scaleRange: 0.06, opacityRange: 0.06 }
+                    cloud: { yRange: 8,  scaleRange: 0.15, opacityRange: 0.25 },
+                    far:   { yRange: 15, scaleRange: 0.18, opacityRange: 0.18 },
+                    mid:   { yRange: 10, scaleRange: 0.12, opacityRange: 0.12 },
+                    park:  { yRange: 8,  scaleRange: 0.10, opacityRange: 0.10 }
                 };
                 const j = jitter[layer] || jitter.mid;
                 return {
@@ -3264,9 +3268,14 @@
                 // Start with even distribution, then apply controlled variance
                 const avgSlot = maxX / count;
                 for (let i = 0; i < count; i++) {
-                    // Base position with variance: allow ±35% of slot width shift
+                    // Base position with strong variance: allow ±45% of slot width shift
+                    // Plus occasional clustering bias (30% chance to pull toward neighbor)
                     const base = i * avgSlot;
-                    const variance = (Math.random() - 0.5) * avgSlot * 0.7;
+                    let variance = (Math.random() - 0.5) * avgSlot * 0.9;
+                    // Clustering: occasionally pull toward previous position for natural grouping
+                    if (i > 0 && Math.random() < 0.3) {
+                        variance *= 0.4; // reduce variance = cluster with previous
+                    }
                     let x = base + variance;
                     // Clamp to valid range
                     x = Math.max(0, Math.min(maxX, x));
@@ -3312,7 +3321,11 @@
                 // NEW: Dense chimney pots cluster (Victorian industrial roofline)
                 `<svg width="110" height="85" viewBox="0 0 110 85"><rect x="2" y="40" width="25" height="45" fill="#9090A0" opacity="0.4"/><rect x="29" y="35" width="25" height="50" fill="#9898A8" opacity="0.4"/><rect x="56" y="42" width="25" height="43" fill="#8888A0" opacity="0.4"/><rect x="83" y="38" width="25" height="47" fill="#9090A8" opacity="0.4"/><rect x="6" y="28" width="5" height="14" fill="#606068" opacity="0.5"/><rect x="14" y="30" width="5" height="12" fill="#606068" opacity="0.5"/><rect x="33" y="22" width="5" height="15" fill="#606068" opacity="0.5"/><rect x="41" y="25" width="5" height="12" fill="#606068" opacity="0.5"/><rect x="49" y="23" width="5" height="14" fill="#606068" opacity="0.5"/><rect x="60" y="30" width="5" height="14" fill="#606068" opacity="0.5"/><rect x="68" y="32" width="5" height="12" fill="#606068" opacity="0.5"/><rect x="76" y="30" width="5" height="14" fill="#606068" opacity="0.5"/><rect x="87" y="26" width="5" height="14" fill="#606068" opacity="0.5"/><rect x="95" y="28" width="5" height="12" fill="#606068" opacity="0.5"/><rect x="103" y="26" width="5" height="14" fill="#606068" opacity="0.5"/></svg>`,
                 // RARE: Distant Canary Wharf cluster (very low contrast, atmospheric depth)
-                `<svg width="90" height="140" viewBox="0 0 90 140"><rect x="35" y="20" width="20" height="120" fill="#A0A8B8" opacity="0.22"/><rect x="33" y="15" width="24" height="8" fill="#A0A8B8" opacity="0.2"/><polygon points="45,0 38,15 52,15" fill="#A8B0C0" opacity="0.18"/><rect x="10" y="50" width="18" height="90" fill="#98A0B0" opacity="0.2"/><rect x="62" y="45" width="18" height="95" fill="#98A0B0" opacity="0.2"/><rect x="5" y="70" width="12" height="70" fill="#9098A8" opacity="0.18"/><rect x="73" y="65" width="12" height="75" fill="#9098A8" opacity="0.18"/></svg>`
+                `<svg width="90" height="140" viewBox="0 0 90 140"><rect x="35" y="20" width="20" height="120" fill="#A0A8B8" opacity="0.22"/><rect x="33" y="15" width="24" height="8" fill="#A0A8B8" opacity="0.2"/><polygon points="45,0 38,15 52,15" fill="#A8B0C0" opacity="0.18"/><rect x="10" y="50" width="18" height="90" fill="#98A0B0" opacity="0.2"/><rect x="62" y="45" width="18" height="95" fill="#98A0B0" opacity="0.2"/><rect x="5" y="70" width="12" height="70" fill="#9098A8" opacity="0.18"/><rect x="73" y="65" width="12" height="75" fill="#9098A8" opacity="0.18"/></svg>`,
+                // RARE: Distant church spire with misty haze (atmospheric perspective)
+                `<svg width="50" height="120" viewBox="0 0 50 120"><rect x="15" y="45" width="20" height="75" fill="#A8B0B8" opacity="0.2"/><rect x="10" y="40" width="30" height="8" fill="#A0A8B0" opacity="0.18"/><polygon points="25,0 18,40 32,40" fill="#A8B0C0" opacity="0.2"/><circle cx="25" cy="8" r="3" fill="#B0B8C0" opacity="0.15"/><rect x="18" y="60" width="6" height="10" fill="#B8C0C8" opacity="0.12"/><rect x="26" y="60" width="6" height="10" fill="#B8C0C8" opacity="0.12"/><ellipse cx="25" cy="115" rx="22" ry="5" fill="#C0C8D0" opacity="0.1"/></svg>`,
+                // RARE: Foggy dome silhouette (very subtle, extends visual memory)
+                `<svg width="70" height="100" viewBox="0 0 70 100"><ellipse cx="35" cy="50" rx="30" ry="25" fill="#A0A8B8" opacity="0.18"/><rect x="15" y="70" width="40" height="30" fill="#98A0B0" opacity="0.16"/><ellipse cx="35" cy="30" rx="12" ry="15" fill="#A8B0C0" opacity="0.15"/><rect x="32" y="12" width="6" height="10" fill="#A0A8B8" opacity="0.14"/><circle cx="35" cy="10" r="4" fill="#B0B8C0" opacity="0.12"/></svg>`
             ];
             const farBaseWidth = window.innerWidth;
             const farIndices = generateNonAdjacentIndices(8, farSVGs.length);
