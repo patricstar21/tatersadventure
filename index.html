@@ -200,6 +200,10 @@
             border-top: 3px solid #8A7A6A;
             border-bottom: 3px solid #7A6A5A;
             animation: scroll-path calc(16s / var(--ambient-motion-factor)) linear infinite;
+            will-change: transform;
+            -webkit-backface-visibility: hidden;
+            backface-visibility: hidden;
+
         }
         @media (max-width: 520px) {
   .path {
@@ -208,9 +212,10 @@
 }
         .path.paused { animation-play-state: paused; }
         @keyframes scroll-path {
-            0% { transform: translateX(0); }
-            100% { transform: translateX(-66.6667%); }
-        }
+    0% { transform: translate3d(0, 0, 0); }
+    100% { transform: translate3d(-66.6667%, 0, 0); }
+}
+
 
         .tater-container {
             position: absolute;
@@ -992,12 +997,13 @@
             animation: screen-shake 100ms ease-out;
         }
         @keyframes screen-shake {
-            0%, 100% { transform: translateX(0) translateY(0); }
-            20% { transform: translateX(-3px) translateY(1px); }
-            40% { transform: translateX(3px) translateY(-1px); }
-            60% { transform: translateX(-2px) translateY(1px); }
-            80% { transform: translateX(2px) translateY(-1px); }
-        }
+    0%, 100% { transform: translate3d(0, 0, 0); }
+    20% { transform: translate3d(-3px, 1px, 0); }
+    40% { transform: translate3d(3px, -1px, 0); }
+    60% { transform: translate3d(-2px, 1px, 0); }
+    80% { transform: translate3d(2px, -1px, 0); }
+}
+
 
         /* Step 3 juice - floating text for heal */
         .float-text {
