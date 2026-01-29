@@ -2052,36 +2052,6 @@
 		display: block !important;
 	}
 
-    	/* iOS flash isolation: temporarily disable parallax animations to identify culprit */
-	.clouds,
-	.landmarks-far,
-	.landmarks-mid,
-	.park-elements,
-	.path {
-		animation: none !important;
-	}
-
-	/* iOS flash isolate: test re-enabling clouds only */
-	.clouds {
-		animation: scroll-clouds-ios var(--ambient-motion-factor, 1) linear infinite !important;
-	}
-	/* iOS flash isolate: test re-enabling landmarks-far only */
-	.landmarks-far {
-		animation: scroll-far-ios var(--ambient-motion-factor, 1) linear infinite !important;
-	}
-    	/* iOS flash isolate: test re-enabling landmarks-mid only */
-	.landmarks-mid {
-		animation: scroll-mid-ios var(--ambient-motion-factor, 1) linear infinite !important;
-	}
-	/* iOS flash isolate: test re-enabling park-elements only */
-	.park-elements {
-		animation: scroll-park-ios var(--ambient-motion-factor, 1) linear infinite !important;
-	}
-	/* iOS flash isolate: test re-enabling path only */
-	.path {
-		animation: scroll-path-ios var(--ambient-motion-factor, 1) linear infinite !important;
-	}
-
 
 }
 
