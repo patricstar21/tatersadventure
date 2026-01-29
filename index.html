@@ -2005,6 +2005,33 @@
 		-webkit-backface-visibility: visible !important;
 		backface-visibility: visible !important;
 	}
+	/* iOS flash reduction: use 2D transforms for parallax animations (avoid 3D compositor resets) */
+	@keyframes scroll-clouds-ios {
+		0% { transform: translateX(0); }
+		100% { transform: translateX(-66.6667%); }
+	}
+	@keyframes scroll-far-ios {
+		0% { transform: translateX(0); }
+		100% { transform: translateX(-66.6667%); }
+	}
+	@keyframes scroll-mid-ios {
+		0% { transform: translateX(0); }
+		100% { transform: translateX(-66.6667%); }
+	}
+	@keyframes scroll-park-ios {
+		0% { transform: translateX(0); }
+		100% { transform: translateX(-66.6667%); }
+	}
+	@keyframes scroll-path-ios {
+		0% { transform: translateX(0); }
+		100% { transform: translateX(-66.6667%); }
+	}
+
+	.clouds { animation-name: scroll-clouds-ios !important; }
+	.landmarks-far { animation-name: scroll-far-ios !important; }
+	.landmarks-mid { animation-name: scroll-mid-ios !important; }
+	.park-elements { animation-name: scroll-park-ios !important; }
+	.path { animation-name: scroll-path-ios !important; }
 
 }
 
