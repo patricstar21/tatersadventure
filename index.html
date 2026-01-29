@@ -3776,7 +3776,7 @@
             if (candidateType === null) return true;
 
             const rightmostX = getRightmostObstacleX();
-            const spawnX = window.innerWidth + 80;
+			const spawnX = viewportW + 80;
             const distanceFromSpawn = spawnX - rightmostX;
             const lastObs = obstacles.length > 0 ? obstacles[obstacles.length - 1] : null;
             const lastType = lastObs ? lastObs.type : null;
@@ -3812,7 +3812,7 @@
         function logSpawn(candidateType) {
             if (!DEBUG) return;
             const rightmostX = getRightmostObstacleX();
-            const spawnX = window.innerWidth + 80;
+			const spawnX = viewportW + 80;
             const lastObs = obstacles.length > 0 ? obstacles[obstacles.length - 1] : null;
             const lastType = lastObs ? lastObs.type : null;
             const category = AIR_HAZARDS.includes(candidateType.id) ? 'air' : 'ground';
@@ -4139,7 +4139,7 @@
         // - Ground hazard coming → bone biased higher (tempts a jump)
         // - Air hazard coming → bone biased lower (tempts staying grounded)
         function findSafeBoneHeight() {
-            const boneSpawnX = window.innerWidth + 200;
+			const boneSpawnX = viewportW + 200;
             const safeDistanceAhead = 280; // Same as isBonePositionSafe
 
             // Safety check: is any obstacle within the danger window?
