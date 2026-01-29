@@ -1961,8 +1961,14 @@ will-change: transform, opacity;
 
     /* Avoid paint containment bugs on iOS */
     .game-container {
-        contain: none !important;
-    }
+    contain: none !important;
+
+    /* iOS stability: avoid forcing the whole scene onto a single composited layer */
+    transform: none !important;
+    backface-visibility: visible !important;
+    -webkit-backface-visibility: visible !important;
+    will-change: auto !important;
+}
 }
 
     </style>
