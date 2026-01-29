@@ -2052,6 +2052,46 @@
 		display: block !important;
 	}
 
+	/* iOS ship fix: lock stable parallax animation sub-properties (no isolate harness) */
+	.clouds {
+		animation-name: scroll-clouds-ios !important;
+		animation-duration: calc(120s / var(--ambient-motion-factor, 1)) !important;
+		animation-timing-function: linear !important;
+		animation-iteration-count: infinite !important;
+		animation-play-state: running !important;
+	}
+
+	.landmarks-far {
+		animation-name: scroll-far-ios !important;
+		animation-duration: calc(180s / var(--ambient-motion-factor, 1)) !important;
+		animation-timing-function: linear !important;
+		animation-iteration-count: infinite !important;
+		animation-play-state: running !important;
+	}
+
+	.landmarks-mid {
+		animation-name: scroll-mid-ios !important;
+		animation-duration: calc(140s / var(--ambient-motion-factor, 1)) !important;
+		animation-timing-function: linear !important;
+		animation-iteration-count: infinite !important;
+		animation-play-state: running !important;
+	}
+
+	.park-elements {
+		animation-name: scroll-park-ios !important;
+		animation-duration: calc(90s / var(--ambient-motion-factor, 1)) !important;
+		animation-timing-function: linear !important;
+		animation-iteration-count: infinite !important;
+		animation-play-state: running !important;
+	}
+
+	.path {
+		animation-name: scroll-path-ios !important;
+		animation-duration: calc(60s / var(--ambient-motion-factor, 1)) !important;
+		animation-timing-function: linear !important;
+		animation-iteration-count: infinite !important;
+		animation-play-state: running !important;
+	}
 
 
 }
