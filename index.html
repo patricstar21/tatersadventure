@@ -1934,6 +1934,15 @@
             animation: none !important;
         }
         /* Mobile UX: gameplay band lift is now handled in JS via getMobileBaselineOffset() */
+        /* iOS Chrome black-flash hardening: avoid filter on many moving elements */
+@supports (-webkit-touch-callout: none) {
+    .tater {
+        filter: none !important;
+    }
+    .sprite {
+        filter: none !important;
+    }
+}
 
     </style>
 </head>
