@@ -516,21 +516,28 @@
             height: 100%;
             /* Visual pass - consistent storybook shadow: soft offset + subtle outline glow */
             filter: drop-shadow(1px 2px 2px rgba(0,0,0,0.35)) drop-shadow(0 0 1px rgba(0,0,0,0.2));
+            transform: translate3d(0, 0, 0);
+backface-visibility: hidden;
+-webkit-backface-visibility: hidden;
+will-change: transform, opacity;
+
         }
 
         /* Flying objects polish - spawn-in animation (softened entry to reduce peripheral eye strain) */
         /* Pre-state: holds obstacle invisible until viewport entry triggers animation (high speed only) */
         .sprite.spawn-pending {
             opacity: 0;
-            transform: translateY(6px) scale(0.96);
+            transform: translate3d(0, 6px, 0) scale(0.96);
         }
         .sprite.spawning {
             /* Priority 3 Difficulty: Extended reveal delays visual certainty, not hitbox */
             animation: sprite-spawn 260ms ease-out forwards;
         }
-        @keyframes sprite-spawn {
-            0% { opacity: 0; transform: translateY(6px) scale(0.96); }
-            100% { opacity: 1; transform: translateY(0) scale(1); }
+       @keyframes sprite-spawn {
+        0% { opacity: 0; transform: translate3d(0, 6px, 0) scale(0.96); }
+        100% { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+}
+
         }
 
         /* Flying objects polish - entry telegraph (brief attention-getting bob) */
@@ -1943,7 +1950,12 @@
         filter: none !important;
     }
 }
-
+/* iOS Chrome flash hardening: disable filters on moving sprites */
+@supports (-webkit-touch-callout: none) {
+    .tater { filter: none !important; }
+    .sprite { filter: none !important; }
+    .life-bone.lost { filter: none !important; }
+}
     </style>
 </head>
 <body>
