@@ -1982,6 +1982,17 @@
     .game-container::after {
         display: none !important;
     }
+        /* iOS flash reduction: de-promote huge continuously-animated parallax layers */
+    .clouds,
+    .landmarks-far,
+    .landmarks-mid,
+    .park-elements,
+    .path {
+        will-change: auto !important;
+        -webkit-backface-visibility: visible !important;
+        backface-visibility: visible !important;
+    }
+
 }
 
     </style>
