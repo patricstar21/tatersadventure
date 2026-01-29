@@ -2092,10 +2092,36 @@
 	.path {
 		animation: none !important;
 	}
+    	/* iOS hop fix: keep sprite idle animations on translate3d to avoid 2D/3D transform snapping */
+	@keyframes balloon-float {
+		0%, 100% { transform: translate3d(0, 0, 0) rotate(-2deg); }
+		25% { transform: translate3d(0, -3px, 0) rotate(0deg); }
+		50% { transform: translate3d(0, -1px, 0) rotate(2deg); }
+		75% { transform: translate3d(0, -4px, 0) rotate(0deg); }
 	}
 
+	@keyframes pigeon-bob {
+		0%, 100% { transform: translate3d(0, 0, 0) scaleY(1); }
+		50% { transform: translate3d(0, -2px, 0) scaleY(0.95); }
+	}
 
-}
+	@keyframes thunder-jitter {
+		0%, 100% { transform: translate3d(0, 0, 0); }
+		25% { transform: translate3d(0, -1px, 0); }
+		75% { transform: translate3d(0, 1px, 0); }
+	}
+
+	@keyframes vacuum-shake {
+		0%, 100% { transform: translate3d(0, 0, 0); }
+		50% { transform: translate3d(0, -1px, 0); }
+	}
+
+	@keyframes cat-prowl {
+		0%, 100% { transform: translate3d(0, 0, 0); }
+		50% { transform: translate3d(0, -1px, 0); }
+	}
+
+	}
 
     </style>
 </head>
