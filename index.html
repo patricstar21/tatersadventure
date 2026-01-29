@@ -2052,6 +2052,17 @@
 		display: block !important;
 	}
 
+    	/* iOS flash isolation: temporarily disable parallax animations to identify culprit */
+	.clouds,
+	.landmarks-far,
+	.landmarks-mid,
+	.park-elements,
+	.path {
+		animation: none !important;
+		transform: none !important;
+	}
+
+
 }
 
     </style>
