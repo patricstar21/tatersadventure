@@ -4059,7 +4059,7 @@
 
         // Step 2.7 powerup safety - Check if bone spawn position is safe
         function isBonePositionSafe(boneHeight) {
-            const boneSpawnX = window.innerWidth + 200;
+            const boneSpawnX = viewportW + 200;
             // Step 2.7 powerup safety - tuned safe distances
             const safeDistanceBehind = 120; // Don't spawn too close behind obstacle
             const safeDistanceAhead = 280;  // Don't spawn if obstacle will overlap soon
@@ -4239,6 +4239,7 @@
 
 		window.addEventListener('resize', refreshViewportW, { passive: true });
 		if (window.visualViewport) window.visualViewport.addEventListener('resize', refreshViewportW, { passive: true });
+        		// Viewport width helper: on iOS, visualViewport avoids jumps when browser UI shows/hides
         const SUBSTEP_THRESHOLD = 10;  // px/frame threshold to enable substeps
         const MAX_SUBSTEPS = 1; // v1.1 perf: disable substeps (avoid layout thrash);        // cap to avoid performance issues
 
@@ -4318,7 +4319,7 @@
                     // Broad-phase gate: skip expensive getBoundingClientRect if powerup is far from Tater
                     if (!p.collected && p.x < proximityThreshold) {
                         // Update transform for accurate getBoundingClientRect
-                        p.element.style.transform = `translate3d(${p.x - window.innerWidth}px, 0, 0)`;
+                        p.element.style.transform = `translate3d(${p.x - viewportW}px, 0, 0)`;
                         const pr = p.element.getBoundingClientRect();
                         if (hb.left < pr.right && hb.right > pr.left && hb.top < pr.bottom && hb.bottom > pr.top) {
                             p.collected = true;
@@ -4328,7 +4329,7 @@
                     }
                 }
                 // Final position update (GPU-accelerated)
-                p.element.style.transform = `translate3d(${p.x - window.innerWidth}px, 0, 0)`;
+                p.element.style.transform = `translate3d(${p.x - viewportW}px, 0, 0)`;
                 if (p.x < -50) { p.element.remove(); return false; }
                 return true;
             });
