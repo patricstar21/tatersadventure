@@ -1968,16 +1968,19 @@ will-change: transform, opacity;
         animation: none !important;
     }
 
-    /* Avoid paint containment bugs on iOS */
-    .game-container {
-    contain: none !important;
-
     /* iOS stability: avoid forcing the whole scene onto a single composited layer */
-    transform: none !important;
-    backface-visibility: visible !important;
-    -webkit-backface-visibility: visible !important;
-    will-change: auto !important;
-}
+    .game-container {
+        contain: none !important;
+        transform: none !important;
+        backface-visibility: visible !important;
+        -webkit-backface-visibility: visible !important;
+        will-change: auto !important;
+    }
+
+    /* iOS stability test: remove always-present dim pseudo-layer */
+    .game-container::after {
+        display: none !important;
+    }
 }
 
     </style>
