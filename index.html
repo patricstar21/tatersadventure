@@ -1939,21 +1939,32 @@ will-change: transform, opacity;
             animation: none !important;
         }
         /* Mobile UX: gameplay band lift is now handled in JS via getMobileBaselineOffset() */
-        /* iOS Chrome black-flash hardening: avoid filter on many moving elements */
+/* iOS Chrome flash hardening (ship build)
+   Visual-only overrides to avoid WebKit compositor flicker */
 @supports (-webkit-touch-callout: none) {
-    .tater {
-        filter: none !important;
-    }
-    .sprite {
-        filter: none !important;
-    }
-}
-/* iOS Chrome flash hardening: disable filters on moving sprites */
-@supports (-webkit-touch-callout: none) {
+
+    /* Disable filters on moving elements */
     .tater { filter: none !important; }
     .sprite { filter: none !important; }
     .life-bone.lost { filter: none !important; }
+
+    /* Disable full-screen opacity animations on iOS */
+    .game-container::after,
+    .vignette-overlay,
+    .damage-flash,
+    .heal-flash,
+    .overlay,
+    #gameOverOverlay {
+        transition: none !important;
+        animation: none !important;
+    }
+
+    /* Avoid paint containment bugs on iOS */
+    .game-container {
+        contain: none !important;
+    }
 }
+
     </style>
 </head>
 <body>
