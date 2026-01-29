@@ -2085,12 +2085,10 @@
 		animation-play-state: running !important;
 	}
 
+		/* iOS ship fix: disable road animation to eliminate remaining flash */
 	.path {
-		animation-name: scroll-path-ios !important;
-		animation-duration: calc(60s / var(--ambient-motion-factor, 1)) !important;
-		animation-timing-function: linear !important;
-		animation-iteration-count: infinite !important;
-		animation-play-state: running !important;
+		animation: none !important;
+	}
 	}
 
 
