@@ -2033,6 +2033,25 @@
 	.park-elements { animation-name: scroll-park-ios !important; }
 	.path { animation-name: scroll-path-ios !important; }
 
+    	/* iOS flash reduction: remove full-screen layers from compositor when hidden */
+	.overlay:not(.show) {
+		display: none !important;
+	}
+	.overlay.show {
+		display: flex !important;
+	}
+
+	.vignette-overlay:not(.show),
+	.damage-flash:not(.show),
+	.heal-flash:not(.show) {
+		display: none !important;
+	}
+	.vignette-overlay.show,
+	.damage-flash.show,
+	.heal-flash.show {
+		display: block !important;
+	}
+
 }
 
     </style>
