@@ -508,16 +508,16 @@
 
         /* Visual pass - inner sprite wrapper with storybook shadow */
         .sprite {
-            width: 100%;
-            height: 100%;
-            /* Visual pass - consistent storybook shadow: soft offset + subtle outline glow */
-            filter: drop-shadow(1px 2px 2px rgba(0,0,0,0.35)) drop-shadow(0 0 1px rgba(0,0,0,0.2));
-            transform: translate3d(0, 0, 0);
-backface-visibility: hidden;
--webkit-backface-visibility: hidden;
-will-change: transform, opacity;
-
-        }
+    width: 100%;
+    height: 100%;
+    /* Visual pass - consistent storybook shadow: soft offset + subtle outline glow */
+    filter: drop-shadow(1px 2px 2px rgba(0,0,0,0.35))
+            drop-shadow(0 0 1px rgba(0,0,0,0.2));
+    transform: translate3d(0, 0, 0);
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    will-change: transform, opacity;
+}
 
         /* Flying objects polish - spawn-in animation (softened entry to reduce peripheral eye strain) */
         /* Pre-state: holds obstacle invisible until viewport entry triggers animation (high speed only) */
@@ -541,9 +541,10 @@ will-change: transform, opacity;
         }
         /* Visual pass - telegraph animation (bob only; shadow inherited from .sprite) */
         @keyframes sprite-telegraph {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-4px); }
+        0%, 100% { transform: translate3d(0, 0, 0); }
+        50% { transform: translate3d(0, -4px, 0); }
         }
+
 
         /* Flying objects polish - per-type idle animations */
 
