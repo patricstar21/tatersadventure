@@ -4044,7 +4044,7 @@
 
             obstacles.push({
                 element: o,
-                x: window.innerWidth + 80,
+				x: viewportW + 80,
                 type: t,
                 hit: false,
                 _sprite: sprite,
@@ -4208,7 +4208,7 @@
             p.style.cssText = `width:45px;height:26px;right:0;bottom:${boneBottomY}%;will-change:transform;transform:translate3d(200px,0,0)`;
             obstaclesContainer.appendChild(p);
 
-            powerups.push({ element: p, x: window.innerWidth + 200, collected: false, height: chosenHeight });
+			powerups.push({ element: p, x: viewportW + 200, collected: false, height: chosenHeight });
             return true; // Step 2.7 powerup safety - indicate successful spawn
         }
 
@@ -4228,6 +4228,17 @@
 
         // CHANGE (visual): high-speed substep motion smoothing to reduce strobing
         // When spd > 10, split movement into substeps for smoother collision and visual continuity
+        		// VIEWPORT WIDTH STABILIZATION (iOS)
+		// Avoid using live window.innerWidth for obstacle transforms because iOS can change it mid-run
+		// when the browser UI collapses/expands, causing a visible "hop".
+		let viewportW = Math.round((window.visualViewport && window.visualViewport.width) || document.documentElement.clientWidth || window.innerWidth);
+
+		function refreshViewportW() {
+			viewportW = Math.round((window.visualViewport && window.visualViewport.width) || document.documentElement.clientWidth || window.innerWidth);
+		}
+
+		window.addEventListener('resize', refreshViewportW, { passive: true });
+		if (window.visualViewport) window.visualViewport.addEventListener('resize', refreshViewportW, { passive: true });
         const SUBSTEP_THRESHOLD = 10;  // px/frame threshold to enable substeps
         const MAX_SUBSTEPS = 1; // v1.1 perf: disable substeps (avoid layout thrash);        // cap to avoid performance issues
 
@@ -4252,7 +4263,7 @@
                     // Broad-phase gate: skip expensive getBoundingClientRect if obstacle is far from Tater
                     if (!o.hit && !invulnerable && o.x < proximityThreshold) {
                         // Update transform for accurate getBoundingClientRect
-                        o.element.style.transform = `translate3d(${o.x - window.innerWidth}px, 0, 0)`;
+                        o.element.style.transform = `translate3d(${o.x - viewportW}px, 0, 0)`;
                         const or = o.element.getBoundingClientRect();
                         if (hb.left < or.right - 8 && hb.right > or.left + 8 && hb.top < or.bottom - 8 && hb.bottom > or.top + 8) {
                             o.hit = true;
@@ -4262,9 +4273,9 @@
                     }
                 }
                 // Final position update (GPU-accelerated)
-                o.element.style.transform = `translate3d(${o.x - window.innerWidth}px, 0, 0)`;
+                o.element.style.transform = `translate3d(${o.x - viewportW}px, 0, 0)`;
                 // CHANGE (spawn-ease): Single source of truth for entry animation when obstacle enters viewport
-                if (!o._spawnEaseDone && o.x <= window.innerWidth) {
+                if (!o._spawnEaseDone && o.x <= viewportW) {
                     o._spawnEaseDone = true;
                     if (o._spawnEaseEligible) {
                         // High speed: Apply soft spawn-in easing, then go directly to idle (skip telegraph)
