@@ -1953,45 +1953,58 @@
    Visual-only overrides to avoid WebKit compositor flicker */
 @supports (-webkit-touch-callout: none) {
 
-    /* Disable filters on moving elements */
-    .tater { filter: none !important; }
-    .sprite { filter: none !important; }
-    .life-bone.lost { filter: none !important; }
+	/* Disable filters on moving elements */
+	.tater { filter: none !important; }
+	.sprite { filter: none !important; }
+	.life-bone.lost { filter: none !important; }
 
-    /* Disable full-screen opacity animations on iOS */
-    .game-container::after,
-    .vignette-overlay,
-    .damage-flash,
-    .heal-flash,
-    .overlay,
-    #gameOverOverlay {
-        transition: none !important;
-        animation: none !important;
-    }
+	/* Disable full-screen opacity animations on iOS */
+	.game-container::after,
+	.vignette-overlay,
+	.damage-flash,
+	.heal-flash,
+	.overlay,
+	#gameOverOverlay {
+		transition: none !important;
+		animation: none !important;
+	}
 
-    /* iOS stability: avoid forcing the whole scene onto a single composited layer */
-    .game-container {
-        contain: none !important;
-        transform: none !important;
-        backface-visibility: visible !important;
-        -webkit-backface-visibility: visible !important;
-        will-change: auto !important;
-    }
+	/* iOS stability: avoid forcing the whole scene onto a single composited layer */
+	.game-container {
+		contain: none !important;
+		-webkit-transform: none !important;
+		transform: none !important;
+		-webkit-backface-visibility: visible !important;
+		backface-visibility: visible !important;
+		will-change: auto !important;
+	}
 
-    /* iOS stability test: remove always-present dim pseudo-layer */
-    .game-container::after {
-        display: none !important;
-    }
-        /* iOS flash reduction: de-promote huge continuously-animated parallax layers */
-    .clouds,
-    .landmarks-far,
-    .landmarks-mid,
-    .park-elements,
-    .path {
-        will-change: auto !important;
-        -webkit-backface-visibility: visible !important;
-        backface-visibility: visible !important;
-    }
+	/* iOS stability test: remove always-present dim pseudo-layer */
+	.game-container::after {
+		display: none !important;
+	}
+
+	/* iOS flash reduction: de-promote hidden full-screen fixed overlays */
+	.overlay,
+	.vignette-overlay,
+	.damage-flash,
+	.heal-flash,
+	#gameOverOverlay {
+		-webkit-transform: none !important;
+		transform: none !important;
+		will-change: auto !important;
+	}
+
+	/* iOS flash reduction: de-promote huge continuously-animated parallax layers */
+	.clouds,
+	.landmarks-far,
+	.landmarks-mid,
+	.park-elements,
+	.path {
+		will-change: auto !important;
+		-webkit-backface-visibility: visible !important;
+		backface-visibility: visible !important;
+	}
 
 }
 
