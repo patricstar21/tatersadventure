@@ -2051,6 +2051,18 @@
 	.heal-flash.show {
 		display: block !important;
 	}
+	/* iOS flash isolate: disable all parallax */
+	.clouds,
+	.landmarks-far,
+	.landmarks-mid,
+	.park-elements,
+	.path {
+		animation: none !important;
+	}
+	/* iOS flash isolate: enable clouds only */
+	.clouds {
+		animation-name: scroll-clouds-ios !important;
+	}
 
 
 }
