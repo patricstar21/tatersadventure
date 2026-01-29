@@ -2062,14 +2062,34 @@
 	/* iOS flash isolate: enable clouds only */
 	.clouds {
 		animation-name: scroll-clouds-ios !important;
+		animation-duration: calc(120s / var(--ambient-motion-factor, 1)) !important;
+		animation-timing-function: linear !important;
+		animation-iteration-count: infinite !important;
+		animation-play-state: running !important;
 	}
 	/* iOS flash isolate: enable landmarks-far */
 	.landmarks-far {
 		animation-name: scroll-far-ios !important;
+		animation-duration: calc(180s / var(--ambient-motion-factor, 1)) !important;
+		animation-timing-function: linear !important;
+		animation-iteration-count: infinite !important;
+		animation-play-state: running !important;
 	}
 	/* iOS flash isolate: enable landmarks-mid */
 	.landmarks-mid {
 		animation-name: scroll-mid-ios !important;
+		animation-duration: calc(140s / var(--ambient-motion-factor, 1)) !important;
+		animation-timing-function: linear !important;
+		animation-iteration-count: infinite !important;
+		animation-play-state: running !important;
+	}
+	/* iOS flash isolate: enable park-elements */
+	.park-elements {
+		animation-name: scroll-park-ios !important;
+		animation-duration: calc(90s / var(--ambient-motion-factor, 1)) !important;
+		animation-timing-function: linear !important;
+		animation-iteration-count: infinite !important;
+		animation-play-state: running !important;
 	}
 
 
