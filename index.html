@@ -4276,7 +4276,7 @@
                 // Final position update (GPU-accelerated)
                 o.element.style.transform = `translate3d(${o.x - viewportW}px, 0, 0)`;
                 // CHANGE (spawn-ease): Single source of truth for entry animation when obstacle enters viewport
-                if (!o._spawnEaseDone && o.x <= viewportW) {
+                if (!o._spawnEaseDone && o.x <= viewportW + 40) {
                     o._spawnEaseDone = true;
                     if (o._spawnEaseEligible) {
                         // High speed: Apply soft spawn-in easing, then go directly to idle (skip telegraph)
