@@ -4676,6 +4676,8 @@
             // Game-over polish - Clear cinematic effects
             gameContainer.classList.remove('defeat-cinematic');
             vignetteOverlay.classList.remove('show');
+			damageFlash.classList.remove('show');
+			healFlash.classList.remove('show');
             // Step 2.6 spawn gate accuracy - reset spawn tracking
             lastAirSpawnTime = 0; lastTallSpawnTime = 0; consecutiveSpawns = 0; lastSpawnedType = null; lastSpawnedCategory = null; patternQueue = [];
             // Ship-hardening: reset spawn timers to prevent desync on restart
