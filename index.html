@@ -4702,7 +4702,10 @@
             pauseAnimations(true); // Freeze moving layers first
             void gameContainer.offsetHeight; // Force a layout sync so animation state is clean
             requestAnimationFrame(() => {
-	        pauseAnimations(false); // Resume gentle pre-run background motion on a fresh frame
+	// Reset hardening: re-apply calm factor on the same frame we unpause.
+	// This helps prevent a rare one-frame "sprint" right after Reset.
+	setAmbientMotionFactor(AMBIENT_RAMP_START);
+	pauseAnimations(false); // Resume gentle pre-run background motion on a fresh frame
 });
 
             // RAF chain hardening: restart the loop after reset
