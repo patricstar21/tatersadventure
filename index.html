@@ -4698,7 +4698,12 @@
             applyBaseYToTater(true);
             shadow.style.transform = 'scale(1)'; shadow.style.opacity = '0.3';
             // Visual hierarchy & pacing - Part B: Tater idle, gentle background movement
-            pauseAnimations(false); // Background moves gently during pre-run, Tater stays idle
+            // Reset hardening: avoid rare compositor "catch-up" sprint on background after reset
+            pauseAnimations(true); // Freeze moving layers first
+            void gameContainer.offsetHeight; // Force a layout sync so animation state is clean
+            requestAnimationFrame(() => {
+	        pauseAnimations(false); // Resume gentle pre-run background motion on a fresh frame
+});
 
             // RAF chain hardening: restart the loop after reset
             startGameLoop();
