@@ -4276,7 +4276,7 @@
 				// Final position update (GPU-accelerated)
 				// Visual stability: snap to whole pixels while far from Tater to avoid entry micro-jitter
 				const oTx = o.x - viewportW;
-				const oRenderTx = (o.x < proximityThreshold) ? oTx : Math.round(oTx);
+				const oRenderTx = (o.x <= viewportW + 60) ? oTx : Math.round(oTx);
 				o.element.style.transform = `translate3d(${oRenderTx}px, 0, 0)`;
                 // CHANGE (spawn-ease): Single source of truth for entry animation when obstacle enters viewport
                 if (!o._spawnEaseDone && o.x <= viewportW + 40) {
@@ -4325,7 +4325,7 @@
 				// Final position update (GPU-accelerated)
 				// Visual stability: snap to whole pixels while far from Tater to avoid entry micro-jitter
 				const pTx = p.x - viewportW;
-				const pRenderTx = (p.x < proximityThreshold) ? pTx : Math.round(pTx);
+				const pRenderTx = (p.x <= viewportW + 60) ? pTx : Math.round(pTx);
 				p.element.style.transform = `translate3d(${pRenderTx}px, 0, 0)`;
                         const pr = p.element.getBoundingClientRect();
                         if (hb.left < pr.right && hb.right > pr.left && hb.top < pr.bottom && hb.bottom > pr.top) {
@@ -4335,8 +4335,11 @@
                         }
                     }
                 }
-                // Final position update (GPU-accelerated)
-                p.element.style.transform = `translate3d(${p.x - viewportW}px, 0, 0)`;
+				// Final position update (GPU-accelerated)
+				// Visual stability: snap to whole pixels until powerup is on-screen to avoid entry micro-jitter
+				const pFinalTx = p.x - viewportW;
+				const pFinalRenderTx = (p.x <= viewportW + 60) ? pFinalTx : Math.round(pFinalTx);
+				p.element.style.transform = `translate3d(${pFinalRenderTx}px, 0, 0)`;
                 if (p.x < -50) { p.element.remove(); return false; }
                 return true;
             });
