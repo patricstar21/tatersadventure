@@ -4273,8 +4273,11 @@
                         }
                     }
                 }
-                // Final position update (GPU-accelerated)
-                o.element.style.transform = `translate3d(${o.x - viewportW}px, 0, 0)`;
+				// Final position update (GPU-accelerated)
+				// Visual stability: snap to whole pixels while far from Tater to avoid entry micro-jitter
+				const oTx = o.x - viewportW;
+				const oRenderTx = (o.x < proximityThreshold) ? oTx : Math.round(oTx);
+				o.element.style.transform = `translate3d(${oRenderTx}px, 0, 0)`;
                 // CHANGE (spawn-ease): Single source of truth for entry animation when obstacle enters viewport
                 if (!o._spawnEaseDone && o.x <= viewportW + 40) {
                     o._spawnEaseDone = true;
@@ -4319,7 +4322,11 @@
                     // Broad-phase gate: skip expensive getBoundingClientRect if powerup is far from Tater
                     if (!p.collected && p.x < proximityThreshold) {
                         // Update transform for accurate getBoundingClientRect
-                        p.element.style.transform = `translate3d(${p.x - viewportW}px, 0, 0)`;
+				// Final position update (GPU-accelerated)
+				// Visual stability: snap to whole pixels while far from Tater to avoid entry micro-jitter
+				const pTx = p.x - viewportW;
+				const pRenderTx = (p.x < proximityThreshold) ? pTx : Math.round(pTx);
+				p.element.style.transform = `translate3d(${pRenderTx}px, 0, 0)`;
                         const pr = p.element.getBoundingClientRect();
                         if (hb.left < pr.right && hb.right > pr.left && hb.top < pr.bottom && hb.bottom > pr.top) {
                             p.collected = true;
