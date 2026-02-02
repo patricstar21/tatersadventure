@@ -227,7 +227,7 @@
         .tater {
             width: 100px;
             height: 75px;
-            filter: drop-shadow(1px 2px 3px rgba(0,0,0,0.4)) drop-shadow(0 0 1px rgba(0,0,0,0.25));
+            filter: drop-shadow(1px 2px 3px rgba(0,0,0,0.4));
         }
         @media (min-width: 768px) {
             .tater { width: 120px; height: 90px; }
@@ -510,9 +510,8 @@
         .sprite {
     width: 100%;
     height: 100%;
-    /* Visual pass - consistent storybook shadow: soft offset + subtle outline glow */
-    filter: drop-shadow(1px 2px 2px rgba(0,0,0,0.35))
-            drop-shadow(0 0 1px rgba(0,0,0,0.2));
+    /* Visual pass - consistent storybook shadow (single layer for perf) */
+    filter: drop-shadow(1px 2px 2px rgba(0,0,0,0.35));
     transform: translate3d(0, 0, 0);
     backface-visibility: hidden;
     -webkit-backface-visibility: hidden;
@@ -647,15 +646,8 @@
 
         /* Flying objects polish - depth cues: ground shadow for obstacles */
         .obstacle::after {
-            content: '';
-            position: absolute;
-            bottom: -4px;
-            left: 10%;
-            width: 80%;
-            height: 6px;
-            background: radial-gradient(ellipse, rgba(0,0,0,0.15) 0%, transparent 70%);
-            border-radius: 50%;
-            pointer-events: none;
+            /* Disabled for perf: gradient shadow was paint-heavy on moving elements */
+            display: none;
         }
 
         /* Powerup styling */
@@ -678,7 +670,7 @@
             transform: translate(-50%, -50%);
             background: radial-gradient(ellipse at center, rgba(255,215,0,0.5) 0%, rgba(255,215,0,0) 70%);
             pointer-events: none;
-            animation: bone-glow-pulse 0.5s ease-in-out infinite alternate;
+            opacity: 0.8; /* Static glow (animation removed for perf) */
             z-index: -1;
         }
         @keyframes bone-float {
