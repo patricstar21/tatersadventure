@@ -4245,13 +4245,6 @@
         const SUBSTEP_THRESHOLD = 10;  // px/frame threshold to enable substeps
         const MAX_SUBSTEPS = 1; // v1.1 perf: disable substeps (avoid layout thrash);        // cap to avoid performance issues
 
-        // iOS visual stability: quantize to device pixels to reduce subpixel shimmer
-        const IS_IOS = CSS && CSS.supports && CSS.supports('-webkit-touch-callout', 'none');
-        function quantizeToDevicePixels(x) {
-            const dpr = window.devicePixelRatio || 1;
-            return Math.round(x * dpr) / dpr;
-        }
-
         function updateObstacles() {
             const spd = 5 * gameSpeed;
             const tr = taterContainer.getBoundingClientRect();
@@ -4266,27 +4259,22 @@
             const stepSize = spd / numSteps;
 
             obstacles = obstacles.filter(o => {
-                // Substep movement with per-step collision checks
+                // Position update (substeps disabled: MAX_SUBSTEPS=1)
                 for (let step = 0; step < numSteps; step++) {
                     o.x -= stepSize;
-                    // Check collision at each substep for accuracy
-                    // Broad-phase gate: skip expensive getBoundingClientRect if obstacle is far from Tater
-                    if (!o.hit && !invulnerable && o.x < proximityThreshold) {
-                        // Update transform for accurate getBoundingClientRect
-                        o.element.style.transform = `translate3d(${o.x - viewportW}px, 0, 0)`;
-                        const or = o.element.getBoundingClientRect();
-                        if (hb.left < or.right - 8 && hb.right > or.left + 8 && hb.top < or.bottom - 8 && hb.bottom > or.top + 8) {
-                            o.hit = true;
-                            takeDamage();
-                            break; // Stop substeps after hit
-                        }
+                }
+                // Single transform write per frame (eliminates layout thrash)
+                const oTx = o.x - viewportW;
+                o.element.style.transform = `translate3d(${oTx}px, 0, 0)`;
+                // Collision check AFTER transform is set (getBoundingClientRect reads final position)
+                // Broad-phase gate: skip expensive getBoundingClientRect if obstacle is far from Tater
+                if (!o.hit && !invulnerable && o.x < proximityThreshold) {
+                    const or = o.element.getBoundingClientRect();
+                    if (hb.left < or.right - 8 && hb.right > or.left + 8 && hb.top < or.bottom - 8 && hb.bottom > or.top + 8) {
+                        o.hit = true;
+                        takeDamage();
                     }
                 }
-				// Final position update (GPU-accelerated)
-				// Visual stability: use raw float for consistent approach cadence; iOS quantizes to device pixels
-				const oTx = o.x - viewportW;
-				const oRenderX = IS_IOS ? quantizeToDevicePixels(oTx) : oTx;
-				o.element.style.transform = `translate3d(${oRenderX}px, 0, 0)`;
                 // CHANGE (spawn-ease): Single source of truth for entry animation when obstacle enters viewport
                 if (!o._spawnEaseDone && o.x <= viewportW + 40) {
                     o._spawnEaseDone = true;
@@ -4324,30 +4312,22 @@
             });
 
             powerups = powerups.filter(p => {
-                // Substep movement with per-step collision checks
+                // Position update (substeps disabled: MAX_SUBSTEPS=1)
                 for (let step = 0; step < numSteps; step++) {
                     p.x -= stepSize;
-                    // Check collision at each substep for accuracy
-                    // Broad-phase gate: skip expensive getBoundingClientRect if powerup is far from Tater
-                    if (!p.collected && p.x < proximityThreshold) {
-                        // Update transform for accurate getBoundingClientRect
-				// Visual stability: use raw float for consistent approach cadence; iOS quantizes to device pixels
-				const pTx = p.x - viewportW;
-				const pRenderX = IS_IOS ? quantizeToDevicePixels(pTx) : pTx;
-				p.element.style.transform = `translate3d(${pRenderX}px, 0, 0)`;
-                        const pr = p.element.getBoundingClientRect();
-                        if (hb.left < pr.right && hb.right > pr.left && hb.top < pr.bottom && hb.bottom > pr.top) {
-                            p.collected = true;
-                            collectPowerup(p);
-                            break; // Stop substeps after collection
-                        }
+                }
+                // Single transform write per frame (eliminates layout thrash)
+                const pTx = p.x - viewportW;
+                p.element.style.transform = `translate3d(${pTx}px, 0, 0)`;
+                // Collision check AFTER transform is set (getBoundingClientRect reads final position)
+                // Broad-phase gate: skip expensive getBoundingClientRect if powerup is far from Tater
+                if (!p.collected && p.x < proximityThreshold) {
+                    const pr = p.element.getBoundingClientRect();
+                    if (hb.left < pr.right && hb.right > pr.left && hb.top < pr.bottom && hb.bottom > pr.top) {
+                        p.collected = true;
+                        collectPowerup(p);
                     }
                 }
-				// Final position update (GPU-accelerated)
-				// Visual stability: use raw float for consistent approach cadence; iOS quantizes to device pixels
-				const pFinalTx = p.x - viewportW;
-				const pFinalRenderX = IS_IOS ? quantizeToDevicePixels(pFinalTx) : pFinalTx;
-				p.element.style.transform = `translate3d(${pFinalRenderX}px, 0, 0)`;
                 if (p.x < -50) { p.element.remove(); return false; }
                 return true;
             });
