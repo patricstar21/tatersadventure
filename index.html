@@ -2939,12 +2939,6 @@
         let gameLoopId = null;
         let gameLoopRunning = false;
 
-        // Fixed-timestep accumulator for consistent 60Hz motion regardless of RAF cadence
-        let lastFrameTs = null;
-        let simAccumulatorMs = 0;
-        const FIXED_STEP_MS = 1000 / 60;  // ~16.67ms per physics tick
-        const MAX_STEPS_PER_FRAME = 5;    // Cap catch-up to avoid spiral of death
-
         // Mobile UX: Compute baseline offset to lift gameplay band on small screens
         // Desktop/tablet: 0 offset (baseY stays 9%). Mobile ≤520px: +9 offset (baseY becomes 18%)
         const DESKTOP_BASE_Y = 9;
@@ -4251,6 +4245,13 @@
         const SUBSTEP_THRESHOLD = 10;  // px/frame threshold to enable substeps
         const MAX_SUBSTEPS = 1; // v1.1 perf: disable substeps (avoid layout thrash);        // cap to avoid performance issues
 
+        // iOS visual stability: quantize to device pixels to reduce subpixel shimmer
+        const IS_IOS = CSS && CSS.supports && CSS.supports('-webkit-touch-callout', 'none');
+        function quantizeToDevicePixels(x) {
+            const dpr = window.devicePixelRatio || 1;
+            return Math.round(x * dpr) / dpr;
+        }
+
         function updateObstacles() {
             const spd = 5 * gameSpeed;
             const tr = taterContainer.getBoundingClientRect();
@@ -4282,9 +4283,10 @@
                     }
                 }
 				// Final position update (GPU-accelerated)
-				// Visual stability: use raw float for consistent approach cadence
+				// Visual stability: use raw float for consistent approach cadence; iOS quantizes to device pixels
 				const oTx = o.x - viewportW;
-				o.element.style.transform = `translate3d(${oTx}px, 0, 0)`;
+				const oRenderX = IS_IOS ? quantizeToDevicePixels(oTx) : oTx;
+				o.element.style.transform = `translate3d(${oRenderX}px, 0, 0)`;
                 // CHANGE (spawn-ease): Single source of truth for entry animation when obstacle enters viewport
                 if (!o._spawnEaseDone && o.x <= viewportW + 40) {
                     o._spawnEaseDone = true;
@@ -4329,9 +4331,10 @@
                     // Broad-phase gate: skip expensive getBoundingClientRect if powerup is far from Tater
                     if (!p.collected && p.x < proximityThreshold) {
                         // Update transform for accurate getBoundingClientRect
-				// Visual stability: use raw float for consistent approach cadence
+				// Visual stability: use raw float for consistent approach cadence; iOS quantizes to device pixels
 				const pTx = p.x - viewportW;
-				p.element.style.transform = `translate3d(${pTx}px, 0, 0)`;
+				const pRenderX = IS_IOS ? quantizeToDevicePixels(pTx) : pTx;
+				p.element.style.transform = `translate3d(${pRenderX}px, 0, 0)`;
                         const pr = p.element.getBoundingClientRect();
                         if (hb.left < pr.right && hb.right > pr.left && hb.top < pr.bottom && hb.bottom > pr.top) {
                             p.collected = true;
@@ -4341,9 +4344,10 @@
                     }
                 }
 				// Final position update (GPU-accelerated)
-				// Visual stability: use raw float for consistent approach cadence
+				// Visual stability: use raw float for consistent approach cadence; iOS quantizes to device pixels
 				const pFinalTx = p.x - viewportW;
-				p.element.style.transform = `translate3d(${pFinalTx}px, 0, 0)`;
+				const pFinalRenderX = IS_IOS ? quantizeToDevicePixels(pFinalTx) : pFinalTx;
+				p.element.style.transform = `translate3d(${pFinalRenderX}px, 0, 0)`;
                 if (p.x < -50) { p.element.remove(); return false; }
                 return true;
             });
@@ -4666,9 +4670,6 @@
                 gameLoopId = null;
             }
             gameLoopRunning = false;
-            // Fixed-timestep accumulator: reset to prevent catch-up spiral on restart
-            lastFrameTs = null;
-            simAccumulatorMs = 0;
 
             score = 0; lives = MAX_LIVES; gameSpeed = 1; isGameOver = false; isPaused = false; isJumping = false; isHolding = false; jumpPower = 0; velocity = 0; taterY = 0; invulnerable = false; // uses MAX_LIVES
             hitStopUntil = 0; // Ship-hardening: clear any pending hit-stop
@@ -4729,29 +4730,13 @@
             // Step 3 juice - skip game updates during hit-stop (CSS animations continue)
             const inHitStop = now < hitStopUntil;
 
-            // Fixed-timestep accumulator: compute delta time since last frame
-            const rafTs = performance.now();
-            if (lastFrameTs === null) lastFrameTs = rafTs;
-            let dtMs = rafTs - lastFrameTs;
-            lastFrameTs = rafTs;
-            // Clamp dtMs to avoid huge catch-ups after tab restore or long pauses
-            if (dtMs > 100) dtMs = 100;
-
             // Step 4 tutorial - skip updates while tutorial is active
             // Visual hierarchy & pacing - Part B: skip updates during pre-run state
             if (!isPaused && !isGameOver && !inHitStop && !tutorialActive && !preRunState) {
                 frameCount++; // Anti-cluster: increment frame counter for recovery tracking
-
-                // Fixed-timestep accumulator: run motion/physics at consistent 60Hz
-                simAccumulatorMs += dtMs;
-                let steps = 0;
-                while (simAccumulatorMs >= FIXED_STEP_MS && steps < MAX_STEPS_PER_FRAME) {
-                    updateJumpCharge(); updatePhysics(); updateObstacles();
-                    updateAmbientRamp(score); // CHANGE (ambient-ramp): Smooth easing each tick
-                    updateHighSpeedVisual(score); // CHANGE (high-speed-visual): Dampen noisy idle animations
-                    simAccumulatorMs -= FIXED_STEP_MS;
-                    steps++;
-                }
+                updateJumpCharge(); updatePhysics(); updateObstacles();
+                updateAmbientRamp(score); // CHANGE (ambient-ramp): Smooth easing each frame
+                updateHighSpeedVisual(score); // CHANGE (high-speed-visual): Dampen noisy idle animations
 
                 // Step 2.5 spawn pacing - check for pattern queue opportunity
                 maybeQueuePattern();
