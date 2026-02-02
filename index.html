@@ -93,7 +93,7 @@
             left: 0;
             width: 300%;
             height: 140px;
-            animation: scroll-clouds calc(120s / var(--ambient-motion-factor)) linear infinite;
+            animation: scroll-clouds calc(120s / var(--ambient-motion-factor, 1)) linear infinite;
             will-change: transform;
             -webkit-backface-visibility: hidden;
             backface-visibility: hidden;
@@ -115,7 +115,7 @@
             left: 0;
             width: 300%;
             height: 180px;
-            animation: scroll-far calc(160s / var(--ambient-motion-factor)) linear infinite;
+            animation: scroll-far calc(160s / var(--ambient-motion-factor, 1)) linear infinite;
             will-change: transform;
             -webkit-backface-visibility: hidden;
             backface-visibility: hidden;
@@ -150,7 +150,7 @@
             width: 300%;
             height: 160px;
             opacity: 0.92;
-            animation: scroll-mid calc(100s / var(--ambient-motion-factor)) linear infinite;
+            animation: scroll-mid calc(100s / var(--ambient-motion-factor, 1)) linear infinite;
             will-change: transform;
             -webkit-backface-visibility: hidden;
             backface-visibility: hidden;
@@ -168,7 +168,7 @@
             width: 300%;
             height: 130px;
             opacity: 0.88;
-            animation: scroll-park calc(60s / var(--ambient-motion-factor)) linear infinite;
+            animation: scroll-park calc(60s / var(--ambient-motion-factor, 1)) linear infinite;
             will-change: transform;
             -webkit-backface-visibility: hidden;
             backface-visibility: hidden;
@@ -197,7 +197,7 @@
             background: linear-gradient(180deg, #D4C8B8 0%, #C4B8A8 30%, #B4A898 70%, #A49888 100%);
             border-top: 3px solid #8A7A6A;
             border-bottom: 3px solid #7A6A5A;
-            animation: scroll-path calc(16s / var(--ambient-motion-factor)) linear infinite;
+            animation: scroll-path calc(16s / var(--ambient-motion-factor, 1)) linear infinite;
             will-change: transform;
             -webkit-backface-visibility: hidden;
             backface-visibility: hidden;
@@ -553,10 +553,10 @@
             animation: balloon-float 2.5s ease-in-out infinite;
         }
         @keyframes balloon-float {
-            0%, 100% { transform: translateY(0) rotate(-2deg); }
-            25% { transform: translateY(-3px) rotate(0deg); }
-            50% { transform: translateY(-1px) rotate(2deg); }
-            75% { transform: translateY(-4px) rotate(0deg); }
+            0%, 100% { transform: translate3d(0, 0, 0) rotate(-2deg); }
+            25% { transform: translate3d(0, -3px, 0) rotate(0deg); }
+            50% { transform: translate3d(0, -1px, 0) rotate(2deg); }
+            75% { transform: translate3d(0, -4px, 0) rotate(0deg); }
         }
 
         /* Pigeon: subtle flap + bob */
@@ -564,8 +564,8 @@
             animation: pigeon-bob 0.6s ease-in-out infinite;
         }
         @keyframes pigeon-bob {
-            0%, 100% { transform: translateY(0) scaleY(1); }
-            50% { transform: translateY(-2px) scaleY(0.95); }
+            0%, 100% { transform: translate3d(0, 0, 0) scaleY(1); }
+            50% { transform: translate3d(0, -2px, 0) scaleY(0.95); }
         }
 
         /* Thunder cloud: slight jitter */
@@ -573,9 +573,9 @@
             animation: thunder-jitter 0.15s ease-in-out infinite;
         }
         @keyframes thunder-jitter {
-            0%, 100% { transform: translateY(0); }
-            25% { transform: translateY(-1px); }
-            75% { transform: translateY(1px); }
+            0%, 100% { transform: translate3d(0, 0, 0); }
+            25% { transform: translate3d(0, -1px, 0); }
+            75% { transform: translate3d(0, 1px, 0); }
         }
 
         /* Vacuum: subtle vibration */
@@ -583,8 +583,8 @@
             animation: vacuum-shake 0.08s linear infinite;
         }
         @keyframes vacuum-shake {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-1px); }
+            0%, 100% { transform: translate3d(0, 0, 0); }
+            50% { transform: translate3d(0, -1px, 0); }
         }
 
         /* Cat: subtle tail swish via slight bob */
@@ -592,8 +592,8 @@
             animation: cat-prowl 0.8s ease-in-out infinite;
         }
         @keyframes cat-prowl {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-1px); }
+            0%, 100% { transform: translate3d(0, 0, 0); }
+            50% { transform: translate3d(0, -1px, 0); }
         }
 
         /* Squirrel: nervous twitch */
@@ -601,8 +601,8 @@
             animation: squirrel-twitch 0.4s ease-in-out infinite;
         }
         @keyframes squirrel-twitch {
-            0%, 80%, 100% { transform: translateY(0) rotate(0deg); }
-            40% { transform: translateY(-2px) rotate(-2deg); }
+            0%, 80%, 100% { transform: translate3d(0, 0, 0) rotate(0deg); }
+            40% { transform: translate3d(0, -2px, 0) rotate(-2deg); }
         }
 
         /* Skateboard: slight roll wobble */
@@ -610,8 +610,8 @@
             animation: skateboard-roll 0.3s ease-in-out infinite;
         }
         @keyframes skateboard-roll {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-1px); }
+            0%, 100% { transform: translate3d(0, 0, 0); }
+            50% { transform: translate3d(0, -1px, 0); }
         }
 
         /* ROSTER UPDATE: Umbrella - tumbling drift */
@@ -619,10 +619,10 @@
             animation: umbrella-tumble 1.5s ease-in-out infinite;
         }
         @keyframes umbrella-tumble {
-            0%, 100% { transform: translateY(0) rotate(-5deg); }
-            25% { transform: translateY(-4px) rotate(0deg); }
-            50% { transform: translateY(-2px) rotate(5deg); }
-            75% { transform: translateY(-5px) rotate(2deg); }
+            0%, 100% { transform: translate3d(0, 0, 0) rotate(-5deg); }
+            25% { transform: translate3d(0, -4px, 0) rotate(0deg); }
+            50% { transform: translate3d(0, -2px, 0) rotate(5deg); }
+            75% { transform: translate3d(0, -5px, 0) rotate(2deg); }
         }
 
         /* ROSTER UPDATE: Frisbee - gentle spin wobble (inner only, no container rotation) */
@@ -630,10 +630,10 @@
             animation: frisbee-wobble 0.8s ease-in-out infinite;
         }
         @keyframes frisbee-wobble {
-            0%, 100% { transform: translateY(0) scaleX(1); }
-            25% { transform: translateY(-2px) scaleX(0.98); }
-            50% { transform: translateY(-1px) scaleX(1); }
-            75% { transform: translateY(-3px) scaleX(1.02); }
+            0%, 100% { transform: translate3d(0, 0, 0) scaleX(1); }
+            25% { transform: translate3d(0, -2px, 0) scaleX(0.98); }
+            50% { transform: translate3d(0, -1px, 0) scaleX(1); }
+            75% { transform: translate3d(0, -3px, 0) scaleX(1.02); }
         }
 
         /* Default idle for others (mailman, vet, cone): subtle presence bob */
@@ -641,8 +641,8 @@
             animation: default-bob 1.2s ease-in-out infinite;
         }
         @keyframes default-bob {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-1px); }
+            0%, 100% { transform: translate3d(0, 0, 0); }
+            50% { transform: translate3d(0, -1px, 0); }
         }
 
         /* Flying objects polish - depth cues: ground shadow for obstacles */
@@ -682,8 +682,8 @@
             z-index: -1;
         }
         @keyframes bone-float {
-            0%, 100% { transform: translateY(0) rotate(-1deg); }
-            50% { transform: translateY(-5px) rotate(1deg); }
+            0%, 100% { transform: translate3d(0, 0, 0) rotate(-1deg); }
+            50% { transform: translate3d(0, -5px, 0) rotate(1deg); }
         }
         @keyframes bone-glow-pulse {
             0% { opacity: 0.6; }
@@ -1428,16 +1428,16 @@
         }
         /* Dampened keyframes with reduced amplitude for high-speed mode */
         @keyframes thunder-jitter-damped {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-1px); }
+            0%, 100% { transform: translate3d(0, 0, 0); }
+            50% { transform: translate3d(0, -1px, 0); }
         }
         @keyframes vacuum-shake-damped {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-0.5px); }
+            0%, 100% { transform: translate3d(0, 0, 0); }
+            50% { transform: translate3d(0, -0.5px, 0); }
         }
         @keyframes skateboard-roll-damped {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(1.5px); } /* 25% reduced (was 2px) */
+            0%, 100% { transform: translate3d(0, 0, 0); }
+            50% { transform: translate3d(0, 1.5px, 0); } /* 25% reduced (was 2px) */
         }
         body.high-speed .sprite.thunder-idle {
             animation-name: thunder-jitter-damped;
@@ -2027,10 +2027,6 @@
 		100% { transform: translateX(-66.6667%); }
 	}
 
-	.clouds { animation-name: scroll-clouds-ios !important; }
-	.landmarks-far { animation-name: scroll-far-ios !important; }
-	.landmarks-mid { animation-name: scroll-mid-ios !important; }
-	.park-elements { animation-name: scroll-park-ios !important; }
 	/* iOS ship fix: disable road animation to eliminate remaining flash */
 	.path {
 		animation: none !important;
@@ -2699,19 +2695,25 @@
         }
         let preRunState = true; // Game starts in pre-run state, waiting for first input
 
-        // CHANGE (ambient): ambientMotionFactor controls background motion speed
-        // 1.0 = normal speed, < 1.0 = slower (e.g., 0.55 for calm pre-run)
-        let ambientMotionFactor = 1;
-        function setAmbientMotionFactor(factor) {
-            ambientMotionFactor = factor;
-            document.documentElement.style.setProperty('--ambient-motion-factor', factor);
-        }
-
         // CHANGE (ambient-ramp): Gentle ramp from 0.55 to 1.0 over time or until first milestone
         const AMBIENT_RAMP_START = 0.55;
         const AMBIENT_RAMP_END = 1.0;
         const AMBIENT_RAMP_DURATION = 15000; // 15 seconds (within 12-18s range)
         const AMBIENT_RAMP_MILESTONE = 200;  // First journey milestone threshold
+
+        // CHANGE (ambient): ambientMotionFactor controls background motion speed
+        // 1.0 = normal speed, < 1.0 = slower (e.g., 0.55 for calm pre-run)
+        let ambientMotionFactor = 1;
+        function setAmbientMotionFactor(factor) {
+            // iOS hardening: prevent invalid CSS var values that can cause animation duration spikes
+            let f = Number(factor);
+            if (!Number.isFinite(f)) f = AMBIENT_RAMP_START;
+            // Clamp to a sane range (keep existing behavior but avoid spikes)
+            f = Math.max(0.45, Math.min(1.05, f));
+            ambientMotionFactor = f;
+            document.documentElement.style.setProperty('--ambient-motion-factor', f.toFixed(3));
+        }
+
         let ambientRampActive = false;
         let ambientRampStartTime = 0;
         let ambientRampPausedElapsed = 0; // Elapsed time saved when paused
@@ -2936,6 +2938,12 @@
         // Ship-hardening: game loop guard to prevent multiple loops running
         let gameLoopId = null;
         let gameLoopRunning = false;
+
+        // Fixed-timestep accumulator for consistent 60Hz motion regardless of RAF cadence
+        let lastFrameTs = null;
+        let simAccumulatorMs = 0;
+        const FIXED_STEP_MS = 1000 / 60;  // ~16.67ms per physics tick
+        const MAX_STEPS_PER_FRAME = 5;    // Cap catch-up to avoid spiral of death
 
         // Mobile UX: Compute baseline offset to lift gameplay band on small screens
         // Desktop/tablet: 0 offset (baseY stays 9%). Mobile ≤520px: +9 offset (baseY becomes 18%)
@@ -4274,10 +4282,9 @@
                     }
                 }
 				// Final position update (GPU-accelerated)
-				// Visual stability: snap to whole pixels while far from Tater to avoid entry micro-jitter
+				// Visual stability: use raw float for consistent approach cadence
 				const oTx = o.x - viewportW;
-				const oRenderTx = (o.x <= viewportW + 60) ? oTx : Math.round(oTx);
-				o.element.style.transform = `translate3d(${oRenderTx}px, 0, 0)`;
+				o.element.style.transform = `translate3d(${oTx}px, 0, 0)`;
                 // CHANGE (spawn-ease): Single source of truth for entry animation when obstacle enters viewport
                 if (!o._spawnEaseDone && o.x <= viewportW + 40) {
                     o._spawnEaseDone = true;
@@ -4322,11 +4329,9 @@
                     // Broad-phase gate: skip expensive getBoundingClientRect if powerup is far from Tater
                     if (!p.collected && p.x < proximityThreshold) {
                         // Update transform for accurate getBoundingClientRect
-				// Final position update (GPU-accelerated)
-				// Visual stability: snap to whole pixels while far from Tater to avoid entry micro-jitter
+				// Visual stability: use raw float for consistent approach cadence
 				const pTx = p.x - viewportW;
-				const pRenderTx = (p.x <= viewportW + 60) ? pTx : Math.round(pTx);
-				p.element.style.transform = `translate3d(${pRenderTx}px, 0, 0)`;
+				p.element.style.transform = `translate3d(${pTx}px, 0, 0)`;
                         const pr = p.element.getBoundingClientRect();
                         if (hb.left < pr.right && hb.right > pr.left && hb.top < pr.bottom && hb.bottom > pr.top) {
                             p.collected = true;
@@ -4336,10 +4341,9 @@
                     }
                 }
 				// Final position update (GPU-accelerated)
-				// Visual stability: snap to whole pixels until powerup is on-screen to avoid entry micro-jitter
+				// Visual stability: use raw float for consistent approach cadence
 				const pFinalTx = p.x - viewportW;
-				const pFinalRenderTx = (p.x <= viewportW + 60) ? pFinalTx : Math.round(pFinalTx);
-				p.element.style.transform = `translate3d(${pFinalRenderTx}px, 0, 0)`;
+				p.element.style.transform = `translate3d(${pFinalTx}px, 0, 0)`;
                 if (p.x < -50) { p.element.remove(); return false; }
                 return true;
             });
@@ -4662,6 +4666,9 @@
                 gameLoopId = null;
             }
             gameLoopRunning = false;
+            // Fixed-timestep accumulator: reset to prevent catch-up spiral on restart
+            lastFrameTs = null;
+            simAccumulatorMs = 0;
 
             score = 0; lives = MAX_LIVES; gameSpeed = 1; isGameOver = false; isPaused = false; isJumping = false; isHolding = false; jumpPower = 0; velocity = 0; taterY = 0; invulnerable = false; // uses MAX_LIVES
             hitStopUntil = 0; // Ship-hardening: clear any pending hit-stop
@@ -4722,13 +4729,29 @@
             // Step 3 juice - skip game updates during hit-stop (CSS animations continue)
             const inHitStop = now < hitStopUntil;
 
+            // Fixed-timestep accumulator: compute delta time since last frame
+            const rafTs = performance.now();
+            if (lastFrameTs === null) lastFrameTs = rafTs;
+            let dtMs = rafTs - lastFrameTs;
+            lastFrameTs = rafTs;
+            // Clamp dtMs to avoid huge catch-ups after tab restore or long pauses
+            if (dtMs > 100) dtMs = 100;
+
             // Step 4 tutorial - skip updates while tutorial is active
             // Visual hierarchy & pacing - Part B: skip updates during pre-run state
             if (!isPaused && !isGameOver && !inHitStop && !tutorialActive && !preRunState) {
                 frameCount++; // Anti-cluster: increment frame counter for recovery tracking
-                updateJumpCharge(); updatePhysics(); updateObstacles();
-                updateAmbientRamp(score); // CHANGE (ambient-ramp): Smooth easing each frame
-                updateHighSpeedVisual(score); // CHANGE (high-speed-visual): Dampen noisy idle animations
+
+                // Fixed-timestep accumulator: run motion/physics at consistent 60Hz
+                simAccumulatorMs += dtMs;
+                let steps = 0;
+                while (simAccumulatorMs >= FIXED_STEP_MS && steps < MAX_STEPS_PER_FRAME) {
+                    updateJumpCharge(); updatePhysics(); updateObstacles();
+                    updateAmbientRamp(score); // CHANGE (ambient-ramp): Smooth easing each tick
+                    updateHighSpeedVisual(score); // CHANGE (high-speed-visual): Dampen noisy idle animations
+                    simAccumulatorMs -= FIXED_STEP_MS;
+                    steps++;
+                }
 
                 // Step 2.5 spawn pacing - check for pattern queue opportunity
                 maybeQueuePattern();
