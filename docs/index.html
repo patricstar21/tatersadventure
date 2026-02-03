@@ -2980,7 +2980,7 @@
                 durations.sort((a, b) => a - b);
                 const p95 = durations.length > 0 ? durations[Math.floor(durations.length * 0.95)] : 0;
                 const rectPerSec = perfRectReads / 2;
-                console.log(`[win-perf] fps:${fps.toFixed(1)} avg:${avg.toFixed(1)}ms p95:${p95.toFixed(1)}ms rect/s:${rectPerSec.toFixed(0)} obs:${obstacles.length} pwr:${powerups.length}`);
+                console.log(`[win-perf] fps:${fps.toFixed(1)} avg:${avg.toFixed(1)}ms p95:${p95.toFixed(1)}ms dt:${dtMsLast.toFixed(1)} raw:${dtScaleRawLast.toFixed(2)} sm:${dtScaleSmoothed.toFixed(2)} rect/s:${rectPerSec.toFixed(0)} obs:${obstacles.length} pwr:${powerups.length}`);
                 // Low-paint auto-toggle
                 if (fps < 50) {
                     lowPaintBelowCount++;
@@ -3010,6 +3010,8 @@
         // Time-normalized horizontal movement (Windows Chrome low-FPS fix)
         let lastFrameTime = null;
         let dtScaleSmoothed = 1;
+        let dtMsLast = 16.6667;
+        let dtScaleRawLast = 1;
 
         // Mobile UX: Compute baseline offset to lift gameplay band on small screens
         // Desktop/tablet: 0 offset (baseY stays 9%). Mobile ≤520px: +9 offset (baseY becomes 18%)
@@ -4791,21 +4793,29 @@
             // Step 3 juice - skip game updates during hit-stop (CSS animations continue)
             const inHitStop = now < hitStopUntil;
 
-            // Time-normalized horizontal movement: compute smoothed dtScale
-            const perfNowFrame = performance.now();
-            let dtMs = 16.6667; // default to 60fps
-            if (lastFrameTime !== null) {
-                dtMs = Math.max(12, Math.min(40, perfNowFrame - lastFrameTime));
+            // Time-normalized horizontal movement: Windows-only dtScale
+            // Non-Windows: always use dtScale=1 (no compensation needed)
+            if (IS_WINDOWS) {
+                const perfNowFrame = performance.now();
+                let dtMs = 16.6667; // default to 60fps
+                if (lastFrameTime !== null) {
+                    // Clamp dtMs: 10ms (~100fps) to 60ms (~17fps safety cap)
+                    dtMs = Math.max(10, Math.min(60, perfNowFrame - lastFrameTime));
+                }
+                lastFrameTime = perfNowFrame;
+                // rawScale: 0.6 (fast frames) to 3.0 (handles 20fps: 50/16.67=3.0)
+                const rawScale = Math.max(0.6, Math.min(3.0, dtMs / 16.6667));
+                dtScaleSmoothed = dtScaleSmoothed * 0.9 + rawScale * 0.1;
+                // Diagnostics (read by perf probe)
+                dtMsLast = dtMs;
+                dtScaleRawLast = rawScale;
             }
-            lastFrameTime = perfNowFrame;
-            const rawScale = Math.max(0.75, Math.min(1.5, dtMs / 16.6667));
-            dtScaleSmoothed = dtScaleSmoothed * 0.9 + rawScale * 0.1;
 
             // Step 4 tutorial - skip updates while tutorial is active
             // Visual hierarchy & pacing - Part B: skip updates during pre-run state
             if (!isPaused && !isGameOver && !inHitStop && !tutorialActive && !preRunState) {
                 frameCount++; // Anti-cluster: increment frame counter for recovery tracking
-                updateJumpCharge(); updatePhysics(); updateObstacles(dtScaleSmoothed);
+                updateJumpCharge(); updatePhysics(); updateObstacles(IS_WINDOWS ? dtScaleSmoothed : 1);
                 updateAmbientRamp(score); // CHANGE (ambient-ramp): Smooth easing each frame
                 updateHighSpeedVisual(score); // CHANGE (high-speed-visual): Dampen noisy idle animations
 
