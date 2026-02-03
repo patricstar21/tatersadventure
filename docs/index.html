@@ -2112,6 +2112,23 @@
 .windows-platform .sprite { filter: none !important; }
 .windows-platform .tater { filter: none !important; }
 
+/* Windows low-paint mode (auto-enabled when FPS drops below 50)
+   Additional paint reductions beyond windows-platform baseline */
+.low-paint .sprite,
+.low-paint .tater,
+.low-paint .obstacle,
+.low-paint .powerup {
+    filter: none !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+}
+.low-paint .sprite::before,
+.low-paint .sprite::after,
+.low-paint .obstacle::before,
+.low-paint .obstacle::after {
+    display: none !important;
+}
+
     </style>
 </head>
 <body>
@@ -2506,8 +2523,8 @@
         const gameOverOverlay = document.getElementById('gameOverOverlay');
         const finalScoreDisplay = document.getElementById('finalScore');
         const gameContainer = document.querySelector('.game-container');
-        // Windows platform detection for perf optimizations
-        const IS_WINDOWS = /Win/.test(navigator.platform);
+        // Windows platform detection for perf optimizations (robust: platform + userAgent)
+        const IS_WINDOWS = /Win/.test(navigator.platform) || /Windows/.test(navigator.userAgent);
         if (IS_WINDOWS) gameContainer.classList.add('windows-platform');
         const muteBtn = document.getElementById('muteBtn');
         const tutorialOverlay = document.getElementById('tutorialOverlay'); // Step 4 tutorial
@@ -2935,11 +2952,64 @@
         let gameLoopId = null;
         let gameLoopRunning = false;
 
-        // Dev perf sampler: FPS and rect-read tracking (console only, no UI)
-        let perfSampleStart = 0;
+        // Windows perf probe: ring buffer for frame durations, rect counter
         let perfFrameCount = 0;
         let perfRectReads = 0;
-        const PERF_SAMPLE_INTERVAL = 2000; // Log every 2 seconds
+        const PERF_RING_SIZE = 180;
+        const perfRing = new Float32Array(PERF_RING_SIZE);
+        let perfRingIdx = 0;
+        let perfLastFrameTime = 0;
+        // Low-paint mode state (Windows only)
+        let lowPaintBelowCount = 0;
+        let lowPaintAboveCount = 0;
+
+        // Windows perf probe: setInterval logger with low-paint auto-toggle
+        if (IS_WINDOWS) {
+            setInterval(() => {
+                if (perfFrameCount === 0) return; // No frames yet
+                const fps = perfFrameCount / 2; // 2-second interval
+                // Compute avg and p95 from ring buffer
+                const filled = Math.min(perfFrameCount, PERF_RING_SIZE);
+                let sum = 0;
+                const durations = [];
+                for (let i = 0; i < filled; i++) {
+                    const d = perfRing[i];
+                    if (d > 0) { sum += d; durations.push(d); }
+                }
+                const avg = durations.length > 0 ? sum / durations.length : 0;
+                durations.sort((a, b) => a - b);
+                const p95 = durations.length > 0 ? durations[Math.floor(durations.length * 0.95)] : 0;
+                const rectPerSec = perfRectReads / 2;
+                console.log(`[win-perf] fps:${fps.toFixed(1)} avg:${avg.toFixed(1)}ms p95:${p95.toFixed(1)}ms rect/s:${rectPerSec.toFixed(0)} obs:${obstacles.length} pwr:${powerups.length}`);
+                // Low-paint auto-toggle
+                if (fps < 50) {
+                    lowPaintBelowCount++;
+                    lowPaintAboveCount = 0;
+                    if (lowPaintBelowCount >= 3 && !document.body.classList.contains('low-paint')) {
+                        document.body.classList.add('low-paint');
+                        console.log('[win-perf] low-paint mode ENABLED');
+                    }
+                } else if (fps > 55) {
+                    lowPaintAboveCount++;
+                    lowPaintBelowCount = 0;
+                    if (lowPaintAboveCount >= 3 && document.body.classList.contains('low-paint')) {
+                        document.body.classList.remove('low-paint');
+                        console.log('[win-perf] low-paint mode DISABLED');
+                    }
+                } else {
+                    // FPS between 50-55: reset both counters
+                    lowPaintBelowCount = 0;
+                    lowPaintAboveCount = 0;
+                }
+                // Reset counters
+                perfFrameCount = 0;
+                perfRectReads = 0;
+            }, 2000);
+        }
+
+        // Time-normalized horizontal movement (Windows Chrome low-FPS fix)
+        let lastFrameTime = null;
+        let dtScaleSmoothed = 1;
 
         // Mobile UX: Compute baseline offset to lift gameplay band on small screens
         // Desktop/tablet: 0 offset (baseY stays 9%). Mobile ≤520px: +9 offset (baseY becomes 18%)
@@ -4247,7 +4317,7 @@
         const SUBSTEP_THRESHOLD = 10;  // px/frame threshold to enable substeps
         const MAX_SUBSTEPS = 1; // v1.1 perf: disable substeps (avoid layout thrash);        // cap to avoid performance issues
 
-        function updateObstacles() {
+        function updateObstacles(dtScale = 1) {
             const spd = 5 * gameSpeed;
             const tr = taterContainer.getBoundingClientRect();
             perfRectReads++;
@@ -4259,7 +4329,7 @@
 
             // Calculate substeps: 1 step if slow, up to MAX_SUBSTEPS if fast
             const numSteps = spd > SUBSTEP_THRESHOLD ? Math.min(MAX_SUBSTEPS, Math.ceil(spd / SUBSTEP_THRESHOLD)) : 1;
-            const stepSize = spd / numSteps;
+            const stepSize = (spd * dtScale) / numSteps;
 
             obstacles = obstacles.filter(o => {
                 // Position update (substeps disabled: MAX_SUBSTEPS=1)
@@ -4655,6 +4725,9 @@
                 gameLoopId = null;
             }
             gameLoopRunning = false;
+            // Reset dtScale state to avoid stale jump after restart
+            lastFrameTime = null;
+            dtScaleSmoothed = 1;
 
             score = 0; lives = MAX_LIVES; gameSpeed = 1; isGameOver = false; isPaused = false; isJumping = false; isHolding = false; jumpPower = 0; velocity = 0; taterY = 0; invulnerable = false; // uses MAX_LIVES
             hitStopUntil = 0; // Ship-hardening: clear any pending hit-stop
@@ -4718,11 +4791,21 @@
             // Step 3 juice - skip game updates during hit-stop (CSS animations continue)
             const inHitStop = now < hitStopUntil;
 
+            // Time-normalized horizontal movement: compute smoothed dtScale
+            const perfNowFrame = performance.now();
+            let dtMs = 16.6667; // default to 60fps
+            if (lastFrameTime !== null) {
+                dtMs = Math.max(12, Math.min(40, perfNowFrame - lastFrameTime));
+            }
+            lastFrameTime = perfNowFrame;
+            const rawScale = Math.max(0.75, Math.min(1.5, dtMs / 16.6667));
+            dtScaleSmoothed = dtScaleSmoothed * 0.9 + rawScale * 0.1;
+
             // Step 4 tutorial - skip updates while tutorial is active
             // Visual hierarchy & pacing - Part B: skip updates during pre-run state
             if (!isPaused && !isGameOver && !inHitStop && !tutorialActive && !preRunState) {
                 frameCount++; // Anti-cluster: increment frame counter for recovery tracking
-                updateJumpCharge(); updatePhysics(); updateObstacles();
+                updateJumpCharge(); updatePhysics(); updateObstacles(dtScaleSmoothed);
                 updateAmbientRamp(score); // CHANGE (ambient-ramp): Smooth easing each frame
                 updateHighSpeedVisual(score); // CHANGE (high-speed-visual): Dampen noisy idle animations
 
@@ -4815,18 +4898,15 @@
             // Priority 3: Update debug HUD (throttled, no gameplay impact)
             updateDebugHud(now);
 
-            // Dev perf sampler: log FPS and rect reads every 2 seconds (console only)
-            perfFrameCount++;
-            const perfNow = performance.now();
-            if (perfSampleStart === 0) perfSampleStart = perfNow;
-            if (perfNow - perfSampleStart >= PERF_SAMPLE_INTERVAL) {
-                const elapsed = (perfNow - perfSampleStart) / 1000;
-                const fps = perfFrameCount / elapsed;
-                const rectPerSec = perfRectReads / elapsed;
-                console.log(`[perf] fps:${fps.toFixed(1)} rectReads/s:${rectPerSec.toFixed(0)} obs:${obstacles.length} pwr:${powerups.length}`);
-                perfFrameCount = 0;
-                perfRectReads = 0;
-                perfSampleStart = perfNow;
+            // Windows perf probe: track frame time in ring buffer (minimal overhead)
+            if (IS_WINDOWS) {
+                const perfNow = performance.now();
+                if (perfLastFrameTime > 0) {
+                    perfRing[perfRingIdx] = perfNow - perfLastFrameTime;
+                    perfRingIdx = (perfRingIdx + 1) % PERF_RING_SIZE;
+                }
+                perfLastFrameTime = perfNow;
+                perfFrameCount++;
             }
 
             } finally {
