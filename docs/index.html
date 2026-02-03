@@ -2107,6 +2107,11 @@
 
 	}
 
+/* Windows Chrome perf hardening
+   Disable paint-heavy filters on moving sprites */
+.windows-platform .sprite { filter: none !important; }
+.windows-platform .tater { filter: none !important; }
+
     </style>
 </head>
 <body>
@@ -2501,6 +2506,9 @@
         const gameOverOverlay = document.getElementById('gameOverOverlay');
         const finalScoreDisplay = document.getElementById('finalScore');
         const gameContainer = document.querySelector('.game-container');
+        // Windows platform detection for perf optimizations
+        const IS_WINDOWS = /Win/.test(navigator.platform);
+        if (IS_WINDOWS) gameContainer.classList.add('windows-platform');
         const muteBtn = document.getElementById('muteBtn');
         const tutorialOverlay = document.getElementById('tutorialOverlay'); // Step 4 tutorial
         const hintBar = document.getElementById('hintBar'); // UI polish - hint bar reference
@@ -2926,6 +2934,12 @@
         // Ship-hardening: game loop guard to prevent multiple loops running
         let gameLoopId = null;
         let gameLoopRunning = false;
+
+        // Dev perf sampler: FPS and rect-read tracking (console only, no UI)
+        let perfSampleStart = 0;
+        let perfFrameCount = 0;
+        let perfRectReads = 0;
+        const PERF_SAMPLE_INTERVAL = 2000; // Log every 2 seconds
 
         // Mobile UX: Compute baseline offset to lift gameplay band on small screens
         // Desktop/tablet: 0 offset (baseY stays 9%). Mobile ≤520px: +9 offset (baseY becomes 18%)
@@ -4236,6 +4250,7 @@
         function updateObstacles() {
             const spd = 5 * gameSpeed;
             const tr = taterContainer.getBoundingClientRect();
+            perfRectReads++;
             const hb = { left: tr.left + 20, right: tr.right - 15, top: tr.top + 15, bottom: tr.bottom - 12 };
 
             // Broad-phase proximity threshold: only call getBoundingClientRect when
@@ -4258,6 +4273,7 @@
                 // Broad-phase gate: skip expensive getBoundingClientRect if obstacle is far from Tater
                 if (!o.hit && !invulnerable && o.x < proximityThreshold) {
                     const or = o.element.getBoundingClientRect();
+                    perfRectReads++;
                     if (hb.left < or.right - 8 && hb.right > or.left + 8 && hb.top < or.bottom - 8 && hb.bottom > or.top + 8) {
                         o.hit = true;
                         takeDamage();
@@ -4311,6 +4327,7 @@
                 // Broad-phase gate: skip expensive getBoundingClientRect if powerup is far from Tater
                 if (!p.collected && p.x < proximityThreshold) {
                     const pr = p.element.getBoundingClientRect();
+                    perfRectReads++;
                     if (hb.left < pr.right && hb.right > pr.left && hb.top < pr.bottom && hb.bottom > pr.top) {
                         p.collected = true;
                         collectPowerup(p);
@@ -4797,6 +4814,20 @@
 
             // Priority 3: Update debug HUD (throttled, no gameplay impact)
             updateDebugHud(now);
+
+            // Dev perf sampler: log FPS and rect reads every 2 seconds (console only)
+            perfFrameCount++;
+            const perfNow = performance.now();
+            if (perfSampleStart === 0) perfSampleStart = perfNow;
+            if (perfNow - perfSampleStart >= PERF_SAMPLE_INTERVAL) {
+                const elapsed = (perfNow - perfSampleStart) / 1000;
+                const fps = perfFrameCount / elapsed;
+                const rectPerSec = perfRectReads / elapsed;
+                console.log(`[perf] fps:${fps.toFixed(1)} rectReads/s:${rectPerSec.toFixed(0)} obs:${obstacles.length} pwr:${powerups.length}`);
+                perfFrameCount = 0;
+                perfRectReads = 0;
+                perfSampleStart = perfNow;
+            }
 
             } finally {
                 // RAF chain hardening: always release guard and schedule next frame
